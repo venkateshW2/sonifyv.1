@@ -4,7 +4,8 @@
 //========================================================================
 int main( ){
 	ofGLWindowSettings settings;
-	settings.setSize(640, 640);   // Fixed window size for consistent display and detection
+	settings.setSize(640, 640);   // Always start as square to match detection resolution
+	// Resizable but should maintain square aspect ratio for proper coordinate mapping
 	settings.windowMode = OF_WINDOW;
 
 	auto window = ofCreateWindow(settings);

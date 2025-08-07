@@ -35,11 +35,12 @@ class ofApp : public ofBaseApp{
 		bool videoPaused;
 		string currentVideoPath;
 		
-		// Polygon drawing system
-		vector<vector<ofPoint>> polygons;
-		vector<ofPoint> currentPolygon;
-		vector<ofColor> polygonColors;
-		bool isDrawingPolygon;
+		// Line drawing system only
+		vector<pair<ofPoint, ofPoint>> lines;  // Store lines as start/end point pairs
+		vector<ofColor> lineColors;
+		ofPoint lineStart;
+		bool isDrawingLine;
+		
 		int currentColorIndex;
 		
 		// CoreML YOLO Detection system
@@ -61,9 +62,13 @@ class ofApp : public ofBaseApp{
 		float lastDetectionTime;
 		int detectionErrorCount;
 		
+		// Window scaling for resizable display
+		float displayScale;     // Scale factor for bounding boxes (currentWindow / 640x640)
+		bool showUI;           // Toggle for UI visibility
+		
 		void loadVideoFile(string path);
-		void drawPolygons();
-		ofColor getNextPolygonColor();
+		void drawLines();
+		ofColor getNextLineColor();
 		void loadCoreMLModel();
 		void processCoreMLDetection();
 		void drawDetections();

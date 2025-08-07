@@ -11,8 +11,8 @@ void ofApp::setup(){
 	videoPaused = false;
 	currentVideoPath = "";
 	
-	// Initialize polygon drawing system
-	isDrawingPolygon = false;
+	// Initialize line drawing system
+	isDrawingLine = false;
 	currentColorIndex = 0;
 	
 	// Initialize CoreML detection system
@@ -23,6 +23,10 @@ void ofApp::setup(){
 	detectionFrameSkip = 3;  // Back to every 3rd frame for better detection rate
 	lastDetectionTime = 0.0f;
 	detectionErrorCount = 0;
+	
+	// Initialize UI and scaling
+	displayScale = 1.0f;  // Will be calculated based on window size vs 640x640
+	showUI = true;        // Start with UI visible
 	
 	// Load CoreML YOLO model
 	loadCoreMLModel();
@@ -51,8 +55,12 @@ void ofApp::setup(){
 	
 	if (cameraConnected) {
 		ofLogNotice() << "Camera initialized: " << camera.getWidth() << "x" << camera.getHeight();
-		ofLogNotice() << "Window size: 640x640 (fixed for consistent detection display)";
 	}
+	
+	// Calculate initial display scale (should be 1.0 for 640x640 window)
+	displayScale = (float)ofGetWidth() / 640.0f;  // Assumes square window
+	ofLogNotice() << "Window size: " << ofGetWidth() << "x" << ofGetHeight() 
+				  << " (display scale: " << displayScale << ")";
 	
 	if (!cameraConnected && !videoLoaded) {
 		ofLogError() << "Neither camera nor test video available!";
@@ -84,83 +92,57 @@ void ofApp::draw(){
 		camera.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
 	
-	// Draw polygons over video
-	drawPolygons();
+	// Draw lines over video
+	drawLines();
 	
 	// Draw object detections
 	if (enableDetection && yoloLoaded) {
 		drawDetections();
 	}
 	
-	// Draw FPS counter
-	ofDrawBitmapStringHighlight("App FPS: " + ofToString(ofGetFrameRate(), 1), 10, 20, ofColor::black, ofColor::white);
-	
-	// Draw source status
-	string source = useVideoFile ? "Source: Video File" : "Source: Camera";
-	ofColor sourceColor = (useVideoFile && videoLoaded) || (!useVideoFile && cameraConnected) ? ofColor::green : ofColor::red;
-	ofDrawBitmapStringHighlight(source, 10, 40, ofColor::black, sourceColor);
-	
-	// Draw camera status
-	string cameraStatus = cameraConnected ? "Camera: Available" : "Camera: Not Available";
-	ofColor cameraColor = cameraConnected ? ofColor::green : ofColor::yellow;
-	ofDrawBitmapStringHighlight(cameraStatus, 10, 60, ofColor::black, cameraColor);
-	
-	// Draw video status
-	string videoStatus = videoLoaded ? "Video: Available" : "Video: Not Available";
-	ofColor videoColor = videoLoaded ? ofColor::green : ofColor::yellow;
-	ofDrawBitmapStringHighlight(videoStatus, 10, 80, ofColor::black, videoColor);
-	
-	// Draw current source info
-	if (useVideoFile && videoLoaded) {
-		ofDrawBitmapStringHighlight("Video Size: " + ofToString(videoPlayer.getWidth()) + "x" + ofToString(videoPlayer.getHeight()), 10, 100, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Video Position: " + ofToString(videoPlayer.getPosition(), 2), 10, 120, ofColor::black, ofColor::white);
-	} else if (cameraConnected) {
-		ofDrawBitmapStringHighlight("Camera Size: " + ofToString(camera.getWidth()) + "x" + ofToString(camera.getHeight()), 10, 100, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Frame New: " + string(camera.isFrameNew() ? "YES" : "NO"), 10, 120, ofColor::black, ofColor::white);
-	}
-	
-	// Draw current file info
-	if (useVideoFile && videoLoaded && !currentVideoPath.empty()) {
-		string filename = ofFilePath::getFileName(currentVideoPath);
-		ofDrawBitmapStringHighlight("Current Video: " + filename, 10, 140, ofColor::black, ofColor::white);
-		string playStatus = videoPaused ? "PAUSED" : "PLAYING";
-		ofDrawBitmapStringHighlight("Status: " + playStatus, 10, 160, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Position: " + ofToString(videoPlayer.getPosition(), 2) + " / 1.0", 10, 180, ofColor::black, ofColor::white);
-	}
-	
-	// Draw instructions
-	ofDrawBitmapStringHighlight("Press 'o' to open video file", 10, 200, ofColor::black, ofColor::white);
-	ofDrawBitmapStringHighlight("Press 'v' to toggle video/camera", 10, 220, ofColor::black, ofColor::white);
-	ofDrawBitmapStringHighlight("Press 'r' to restart camera", 10, 240, ofColor::black, ofColor::white);
-	if (useVideoFile && videoLoaded) {
-		ofDrawBitmapStringHighlight("Press SPACE to play/pause video", 10, 260, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Press LEFT/RIGHT to seek video", 10, 280, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Press 'l' to toggle loop mode", 10, 300, ofColor::black, ofColor::white);
-	}
-	
-	// Draw YOLO detection info
-	string yoloStatus = yoloLoaded ? (enableDetection ? "YOLO: ON" : "YOLO: Loaded (OFF)") : "YOLO: Failed to load";
-	ofColor yoloColor = yoloLoaded ? (enableDetection ? ofColor::green : ofColor::yellow) : ofColor::red;
-	ofDrawBitmapStringHighlight(yoloStatus, 10, 400, ofColor::black, yoloColor);
-	
-	if (yoloLoaded) {
-		ofDrawBitmapStringHighlight("Detections: " + ofToString(detections.size()), 10, 420, ofColor::black, ofColor::white);
-		ofDrawBitmapStringHighlight("Frame skip: " + ofToString(frameSkipCounter) + "/" + ofToString(detectionFrameSkip), 10, 440, ofColor::black, ofColor::white);
+	// Only draw UI if enabled (toggle with 'u' key)
+	if (showUI) {
+		// Draw FPS counter
+		ofDrawBitmapStringHighlight("App FPS: " + ofToString(ofGetFrameRate(), 1), 10, 20, ofColor::black, ofColor::white);
 		
-		// Detection rate info already shown in status
-	}
-	
-	// Draw polygon controls and info
-	ofDrawBitmapStringHighlight("Left-click: Add point | Right-click: Finish polygon", 10, 320, ofColor::black, ofColor::white);
-	ofDrawBitmapStringHighlight("Press 'c' to clear all polygons", 10, 340, ofColor::black, ofColor::white);
-	ofDrawBitmapStringHighlight("Press 'd' to toggle YOLO detection", 10, 440, ofColor::black, ofColor::white);
-	
-	// Draw polygon stats
-	string polygonInfo = "Polygons: " + ofToString(polygons.size()) + " | Current points: " + ofToString(currentPolygon.size());
-	ofDrawBitmapStringHighlight(polygonInfo, 10, 360, ofColor::black, ofColor::white);
-	
-	if (isDrawingPolygon && currentPolygon.size() > 0) {
-		ofDrawBitmapStringHighlight("Drawing polygon " + ofToString(polygons.size() + 1), 10, 380, ofColor::black, ofColor::yellow);
+		// Draw source status
+		string source = useVideoFile ? "Source: Video File" : "Source: Camera";
+		ofColor sourceColor = (useVideoFile && videoLoaded) || (!useVideoFile && cameraConnected) ? ofColor::green : ofColor::red;
+		ofDrawBitmapStringHighlight(source, 10, 40, ofColor::black, sourceColor);
+		
+		// Show essential controls and YOLO status
+		string yoloStatus = yoloLoaded ? (enableDetection ? "YOLO: ON" : "YOLO: OFF") : "YOLO: Failed";
+		ofColor yoloColor = yoloLoaded ? (enableDetection ? ofColor::green : ofColor::yellow) : ofColor::red;
+		ofDrawBitmapStringHighlight(yoloStatus, 10, 60, ofColor::black, yoloColor);
+		
+		if (yoloLoaded && enableDetection) {
+			ofDrawBitmapStringHighlight("Detections: " + ofToString(detections.size()), 10, 80, ofColor::black, ofColor::white);
+		}
+		
+		// Show current file info if video loaded
+		if (useVideoFile && videoLoaded && !currentVideoPath.empty()) {
+			string filename = ofFilePath::getFileName(currentVideoPath);
+			ofDrawBitmapStringHighlight("Video: " + filename, 10, 100, ofColor::black, ofColor::white);
+		}
+		
+		// Essential controls
+		ofDrawBitmapStringHighlight("Controls: 'o' open video | 'd' toggle detect | 'u' toggle UI", 10, ofGetHeight() - 60, ofColor::black, ofColor(50, 50, 50, 200));
+		
+		// Show line drawing instructions
+		ofDrawBitmapStringHighlight("Line Drawing: Left-click start | Right-click end | 'c' clear", 10, ofGetHeight() - 40, ofColor::black, ofColor(50, 50, 50, 200));
+		
+		// Window info
+		ofDrawBitmapStringHighlight("Window: " + ofToString(ofGetWidth()) + "x" + ofToString(ofGetHeight()) + " (scale: " + ofToString(displayScale, 1) + ")", 10, ofGetHeight() - 20, ofColor::black, ofColor(50, 50, 50, 200));
+		
+		// Draw line stats
+		if (lines.size() > 0 || isDrawingLine) {
+			string lineInfo = "Lines: " + ofToString(lines.size());
+			ofDrawBitmapStringHighlight(lineInfo, 10, 120, ofColor::black, ofColor::white);
+		}
+		
+		if (isDrawingLine) {
+			ofDrawBitmapStringHighlight("Drawing line " + ofToString(lines.size() + 1) + " - right-click to finish", 10, 140, ofColor::black, ofColor::yellow);
+		}
 	}
 }
 
@@ -302,14 +284,14 @@ void ofApp::keyPressed(int key){
 	}
 	
 	if (key == 'c' || key == 'C') {
-		// Clear all polygons
-		polygons.clear();
-		polygonColors.clear();
-		currentPolygon.clear();
-		isDrawingPolygon = false;
+		// Clear all lines
+		lines.clear();
+		lineColors.clear();
+		isDrawingLine = false;
 		currentColorIndex = 0;
-		ofLogNotice() << "All polygons cleared";
+		ofLogNotice() << "All lines cleared";
 	}
+	
 	
 	if (key == 'd' || key == 'D') {
 		// Toggle YOLO detection
@@ -320,6 +302,13 @@ void ofApp::keyPressed(int key){
 		} else {
 			ofLogWarning() << "YOLO model not loaded - cannot enable detection";
 		}
+	}
+	
+	if (key == 'u' || key == 'U') {
+		// Toggle UI visibility
+		showUI = !showUI;
+		string status = showUI ? "visible" : "hidden";
+		ofLogNotice() << "UI " << status;
 	}
 }
 
@@ -340,23 +329,17 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-	if (button == 0) { // Left click
-		// Add point to current polygon
-		currentPolygon.push_back(ofPoint(x, y));
-		isDrawingPolygon = true;
-		ofLogNotice() << "Added point: (" << x << ", " << y << ") to polygon " << (polygons.size() + 1);
-	} else if (button == 2) { // Right click
-		// Finish current polygon and start new one
-		if (currentPolygon.size() >= 3) {
-			polygons.push_back(currentPolygon);
-			polygonColors.push_back(getNextPolygonColor());
-			ofLogNotice() << "Finished polygon " << polygons.size() << " with " << currentPolygon.size() << " points";
-			
-			currentPolygon.clear();
-			isDrawingPolygon = false;
-		} else if (currentPolygon.size() > 0) {
-			ofLogWarning() << "Polygon needs at least 3 points to finish";
-		}
+	if (button == 0 && !isDrawingLine) { // Left click - start line
+		lineStart = ofPoint(x, y);
+		isDrawingLine = true;
+		ofLogNotice() << "Started line at: (" << x << ", " << y << ")";
+	} else if (button == 2 && isDrawingLine) { // Right click - finish line
+		ofPoint lineEnd = ofPoint(x, y);
+		lines.push_back(std::make_pair(lineStart, lineEnd));
+		lineColors.push_back(getNextLineColor());
+		isDrawingLine = false;
+		ofLogNotice() << "Finished line " << lines.size() << " from (" << lineStart.x << "," << lineStart.y 
+					  << ") to (" << lineEnd.x << "," << lineEnd.y << ")";
 	}
 }
 
@@ -385,12 +368,21 @@ void ofApp::windowResized(int w, int h){
 	// Handle window resize events
 	ofLogNotice() << "Window resized to: " << w << "x" << h;
 	
+	// Enforce square aspect ratio to maintain proper coordinate mapping
+	int squareSize = std::min(w, h);
+	if (w != squareSize || h != squareSize) {
+		ofSetWindowShape(squareSize, squareSize);
+		ofLogNotice() << "Corrected to square: " << squareSize << "x" << squareSize;
+		w = h = squareSize;
+	}
+	
+	// Calculate display scale factor (square window vs detection resolution 640x640)
+	displayScale = (float)squareSize / 640.0f;
+	
+	ofLogNotice() << "Display scale factor: " << displayScale;
+	
 	// Clear current detections since coordinate system has changed
 	detections.clear();
-	
-	// Optionally scale existing polygons to new window size
-	// For now, we'll leave them as-is since user can redraw if needed
-	// In future versions, we could implement polygon coordinate scaling
 	
 	// Force a detection update on next frame
 	frameSkipCounter = 0;
@@ -451,85 +443,45 @@ void ofApp::loadVideoFile(string path) {
 	}
 }
 
+
 //--------------------------------------------------------------
-void ofApp::drawPolygons() {
-	// Draw completed polygons
-	for (int i = 0; i < polygons.size(); i++) {
-		if (polygons[i].size() >= 3) {
-			// Set polygon color with transparency
-			ofSetColor(polygonColors[i], 100);
-			
-			// Draw filled polygon
-			ofBeginShape();
-			for (auto& point : polygons[i]) {
-				ofVertex(point.x, point.y);
-			}
-			ofEndShape(true);
-			
-			// Draw polygon outline
-			ofSetColor(polygonColors[i], 255);
-			ofSetLineWidth(2);
-			ofNoFill();
-			ofBeginShape();
-			for (auto& point : polygons[i]) {
-				ofVertex(point.x, point.y);
-			}
-			ofEndShape(true);
-			ofFill();
-			
-			// Draw polygon number
-			if (polygons[i].size() > 0) {
-				ofPoint center = polygons[i][0];
-				for (int j = 1; j < polygons[i].size(); j++) {
-					center += polygons[i][j];
-				}
-				center /= polygons[i].size();
-				ofSetColor(255, 255, 255);
-				ofDrawBitmapString("Z" + ofToString(i + 1), center.x - 10, center.y + 4);
-			}
-		}
+void ofApp::drawLines() {
+	// Draw completed lines with different colors and endpoint squares
+	for (int i = 0; i < lines.size(); i++) {
+		ofSetColor(lineColors[i], 255);
+		ofSetLineWidth(4);
+		ofDrawLine(lines[i].first, lines[i].second);
+		
+		// Draw endpoint squares
+		ofSetColor(lineColors[i], 255);
+		ofDrawRectangle(lines[i].first.x - 4, lines[i].first.y - 4, 8, 8);  // Start point square
+		ofDrawRectangle(lines[i].second.x - 4, lines[i].second.y - 4, 8, 8); // End point square
+		
+		// Draw line number at midpoint
+		ofPoint midpoint = (lines[i].first + lines[i].second) * 0.5f;
+		ofSetColor(255, 255, 255);
+		ofDrawBitmapString("L" + ofToString(i + 1), midpoint.x - 10, midpoint.y + 4);
 	}
 	
-	// Draw current polygon being drawn
-	if (currentPolygon.size() > 0) {
-		ofColor currentColor = getNextPolygonColor();
-		
-		// Draw points of current polygon
+	// Draw current line being drawn
+	if (isDrawingLine) {
+		ofColor currentColor = getNextLineColor();
 		ofSetColor(currentColor, 200);
 		ofSetLineWidth(3);
-		if (currentPolygon.size() > 1) {
-			for (int i = 1; i < currentPolygon.size(); i++) {
-				ofDrawLine(currentPolygon[i-1], currentPolygon[i]);
-			}
-		}
+		ofDrawLine(lineStart, ofPoint(ofGetMouseX(), ofGetMouseY()));
 		
-		// Draw all points as circles
-		for (auto& point : currentPolygon) {
-			ofDrawCircle(point, 4);
-		}
-		
-		// Draw line from last point to mouse if drawing
-		if (isDrawingPolygon) {
-			ofSetColor(currentColor, 150);
-			ofSetLineWidth(1);
-			ofDrawLine(currentPolygon.back(), ofPoint(ofGetMouseX(), ofGetMouseY()));
-		}
-		
-		// Highlight first point if we have enough points to close
-		if (currentPolygon.size() >= 3) {
-			ofSetColor(255, 255, 0);
-			ofDrawCircle(currentPolygon[0], 6);
-		}
+		// Draw start point square
+		ofSetColor(currentColor, 255);
+		ofDrawRectangle(lineStart.x - 4, lineStart.y - 4, 8, 8);
 	}
 	
 	// Reset drawing state
 	ofSetColor(255);
 	ofSetLineWidth(1);
-	ofFill();
 }
 
 //--------------------------------------------------------------
-ofColor ofApp::getNextPolygonColor() {
+ofColor ofApp::getNextLineColor() {
 	vector<ofColor> colors = {
 		ofColor::red,
 		ofColor::blue,
@@ -538,13 +490,15 @@ ofColor ofApp::getNextPolygonColor() {
 		ofColor::purple,
 		ofColor::cyan,
 		ofColor::yellow,
-		ofColor::magenta
+		ofColor::magenta,
+		ofColor(255, 0, 128),   // Pink
+		ofColor(128, 255, 0),   // Lime green
+		ofColor(255, 128, 0),   // Dark orange
+		ofColor(0, 128, 255)    // Light blue
 	};
 	
 	ofColor color = colors[currentColorIndex % colors.size()];
-	if (currentPolygon.size() == 0) { // Only increment when starting new polygon
-		currentColorIndex++;
-	}
+	currentColorIndex++; // Increment for each new line
 	return color;
 }
 
@@ -779,11 +733,17 @@ void ofApp::drawDetections() {
 			continue;
 		}
 		
-		// Clamp coordinates to screen bounds
-		float x = ofClamp(detection.box.x, 0, ofGetWidth() - detection.box.width);
-		float y = ofClamp(detection.box.y, 0, ofGetHeight() - detection.box.height);
-		float w = ofClamp(detection.box.width, 1, ofGetWidth() - x);
-		float h = ofClamp(detection.box.height, 1, ofGetHeight() - y);
+		// Apply display scaling to detection coordinates
+		float x = detection.box.x * displayScale;
+		float y = detection.box.y * displayScale;
+		float w = detection.box.width * displayScale;
+		float h = detection.box.height * displayScale;
+		
+		// Clamp scaled coordinates to screen bounds
+		x = ofClamp(x, 0, ofGetWidth() - w);
+		y = ofClamp(y, 0, ofGetHeight() - h);
+		w = ofClamp(w, 1, ofGetWidth() - x);
+		h = ofClamp(h, 1, ofGetHeight() - y);
 		
 		// Choose color based on vehicle type
 		ofColor boxColor;
@@ -812,10 +772,10 @@ void ofApp::drawDetections() {
 		ofDrawRectangle(x, y, w, h);
 		ofFill();
 		
-		// Draw confidence bar (small bar next to detection)
-		float confBarWidth = 60;
-		float confBarHeight = 8;
-		float confBarX = x + w + 5;
+		// Draw confidence bar (small bar next to detection) - scaled
+		float confBarWidth = 60 * displayScale;
+		float confBarHeight = 8 * displayScale;
+		float confBarX = x + w + 5 * displayScale;
 		float confBarY = y;
 		
 		// Background of confidence bar
@@ -826,10 +786,10 @@ void ofApp::drawDetections() {
 		ofSetColor(boxColor);
 		ofDrawRectangle(confBarX, confBarY, confBarWidth * detection.confidence, confBarHeight);
 		
-		// Draw class label and confidence
+		// Draw class label and confidence - scaled
 		string label = detection.className + " " + ofToString(detection.confidence, 2);
-		float labelWidth = label.length() * 8;
-		float labelHeight = 20;
+		float labelWidth = label.length() * 8 * displayScale;
+		float labelHeight = 20 * displayScale;
 		
 		// Ensure label background fits on screen
 		float labelX = ofClamp(x, 0, ofGetWidth() - labelWidth);
