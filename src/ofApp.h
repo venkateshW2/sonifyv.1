@@ -3,6 +3,8 @@
 #include "ofMain.h"
 #include "CoreMLDetector.h"
 #include "ofxOsc.h"
+#include "ofxImGui.h"
+#include "ofxJSON.h"
 #include <algorithm>
 
 class ofApp : public ofBaseApp{
@@ -65,7 +67,6 @@ class ofApp : public ofBaseApp{
 		
 		// Window scaling for resizable display
 		float displayScale;     // Scale factor for bounding boxes (currentWindow / 640x640)
-		bool showUI;           // Toggle for UI visibility
 		
 		// Vehicle tracking and line crossing system
 		struct TrackedVehicle {
@@ -108,6 +109,16 @@ class ofApp : public ofBaseApp{
 		int oscPort;
 		bool oscEnabled;
 		
+		// ImGui interface
+		ofxImGui::Gui gui;
+		bool showGUI;
+		
+		// GUI control parameters
+		float confidenceThreshold;
+		int frameSkipValue;
+		bool showDetections;
+		bool showLines;
+		
 		void loadVideoFile(string path);
 		void drawLines();
 		ofColor getNextLineColor();
@@ -125,4 +136,14 @@ class ofApp : public ofBaseApp{
 		bool lineSegmentIntersection(const ofPoint& line1Start, const ofPoint& line1End, 
 									const ofPoint& line2Start, const ofPoint& line2End, 
 									ofPoint& intersection);
+		
+		// GUI methods
+		void setupGUI();
+		void drawGUI();
+		
+		// Configuration methods
+		void saveConfig();
+		void loadConfig();
+		void setDefaultConfig();
+		string getConfigPath();
 };

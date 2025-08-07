@@ -1,0 +1,13 @@
+{
+  "detection": {
+    "confidenceThreshold": 0.7,
+    "enabled": false
+  },
+  "osc": {
+    "host": "127.0.0.1",
+    "port": 12001
+  },
+  "test": {
+    "timestamp": 1754586909.334147
+  }
+}

@@ -26,7 +26,6 @@ void ofApp::setup(){
 	
 	// Initialize UI and scaling
 	displayScale = 1.0f;  // Will be calculated based on window size vs 640x640
-	showUI = true;        // Start with UI visible
 	
 	// Initialize vehicle tracking system
 	nextVehicleId = 1;
@@ -39,6 +38,10 @@ void ofApp::setup(){
 	oscEnabled = true;
 	oscSender.setup(oscHost, oscPort);
 	ofLogNotice() << "OSC sender initialized: " << oscHost << ":" << oscPort;
+	
+	// Load configuration (this will set all GUI parameters)
+	loadConfig();
+	setupGUI();
 	
 	// Load CoreML YOLO model
 	loadCoreMLModel();
@@ -108,62 +111,25 @@ void ofApp::draw(){
 		camera.draw(0, 0, ofGetWidth(), ofGetHeight());
 	}
 	
-	// Draw lines over video
-	drawLines();
+	// Draw lines over video (only if enabled)
+	if (showLines) {
+		drawLines();
+	}
 	
-	// Draw object detections
-	if (enableDetection && yoloLoaded) {
+	// Draw object detections (only if enabled)
+	if (enableDetection && yoloLoaded && showDetections) {
 		drawDetections();
 	}
 	
-	// Only draw UI if enabled (toggle with 'u' key)
-	if (showUI) {
-		// Draw FPS counter
-		ofDrawBitmapStringHighlight("App FPS: " + ofToString(ofGetFrameRate(), 1), 10, 20, ofColor::black, ofColor::white);
-		
-		// Draw source status
-		string source = useVideoFile ? "Source: Video File" : "Source: Camera";
-		ofColor sourceColor = (useVideoFile && videoLoaded) || (!useVideoFile && cameraConnected) ? ofColor::green : ofColor::red;
-		ofDrawBitmapStringHighlight(source, 10, 40, ofColor::black, sourceColor);
-		
-		// Show essential controls and YOLO status
-		string yoloStatus = yoloLoaded ? (enableDetection ? "YOLO: ON" : "YOLO: OFF") : "YOLO: Failed";
-		ofColor yoloColor = yoloLoaded ? (enableDetection ? ofColor::green : ofColor::yellow) : ofColor::red;
-		ofDrawBitmapStringHighlight(yoloStatus, 10, 60, ofColor::black, yoloColor);
-		
-		if (yoloLoaded && enableDetection) {
-			ofDrawBitmapStringHighlight("Detections: " + ofToString(detections.size()), 10, 80, ofColor::black, ofColor::white);
-		}
-		
-		// Show current file info if video loaded
-		if (useVideoFile && videoLoaded && !currentVideoPath.empty()) {
-			string filename = ofFilePath::getFileName(currentVideoPath);
-			ofDrawBitmapStringHighlight("Video: " + filename, 10, 100, ofColor::black, ofColor::white);
-		}
-		
-		// Essential controls
-		ofDrawBitmapStringHighlight("Controls: 'o' open video | 'd' toggle detect | 'u' toggle UI", 10, ofGetHeight() - 60, ofColor::black, ofColor(50, 50, 50, 200));
-		
-		// Show line drawing instructions
-		ofDrawBitmapStringHighlight("Line Drawing: Left-click start | Right-click end | 'c' clear", 10, ofGetHeight() - 40, ofColor::black, ofColor(50, 50, 50, 200));
-		
-		// Window info
-		ofDrawBitmapStringHighlight("Window: " + ofToString(ofGetWidth()) + "x" + ofToString(ofGetHeight()) + " (scale: " + ofToString(displayScale, 1) + ")", 10, ofGetHeight() - 20, ofColor::black, ofColor(50, 50, 50, 200));
-		
-		// Draw line stats
-		if (lines.size() > 0 || isDrawingLine) {
-			string lineInfo = "Lines: " + ofToString(lines.size());
-			ofDrawBitmapStringHighlight(lineInfo, 10, 120, ofColor::black, ofColor::white);
-		}
-		
-		if (isDrawingLine) {
-			ofDrawBitmapStringHighlight("Drawing line " + ofToString(lines.size() + 1) + " - right-click to finish", 10, 140, ofColor::black, ofColor::yellow);
-		}
-	}
+	// Draw GUI
+	drawGUI();
 }
 
 //--------------------------------------------------------------
 void ofApp::exit(){
+	// Save configuration before exiting
+	saveConfig();
+	
 	// Clean up CoreML detector
 	if (detector) {
 		detector = nil;
@@ -180,6 +146,11 @@ ofApp::~ofApp() {
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+	// Check if GUI wants to capture keyboard input (e.g., typing in text fields)
+	if (showGUI && ImGui::GetIO().WantCaptureKeyboard) {
+		return; // GUI is handling this keyboard event
+	}
+	
 	if (key == 'r' || key == 'R') {
 		// Restart camera
 		camera.close();
@@ -320,11 +291,11 @@ void ofApp::keyPressed(int key){
 		}
 	}
 	
-	if (key == 'u' || key == 'U') {
-		// Toggle UI visibility
-		showUI = !showUI;
-		string status = showUI ? "visible" : "hidden";
-		ofLogNotice() << "UI " << status;
+	if (key == 'g' || key == 'G') {
+		// Toggle GUI visibility
+		showGUI = !showGUI;
+		string status = showGUI ? "visible" : "hidden";
+		ofLogNotice() << "GUI " << status;
 	}
 }
 
@@ -340,11 +311,21 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+	// Check if mouse is over GUI - if so, don't process line drawing
+	if (showGUI && ImGui::GetIO().WantCaptureMouse) {
+		return; // GUI is handling this mouse event
+	}
+	
+	// Future: Could add line preview while dragging here
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
+	// Check if mouse is over GUI - if so, don't process line drawing
+	if (showGUI && ImGui::GetIO().WantCaptureMouse) {
+		return; // GUI is handling this mouse event
+	}
+	
 	if (button == 0 && !isDrawingLine) { // Left click - start line
 		lineStart = ofPoint(x, y);
 		isDrawingLine = true;
@@ -361,12 +342,22 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+	// Check if mouse is over GUI - if so, don't process line drawing
+	if (showGUI && ImGui::GetIO().WantCaptureMouse) {
+		return; // GUI is handling this mouse event
+	}
+	
+	// Future: Could add additional line drawing interactions here
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY){
-
+	// Check if mouse is over GUI - if so, don't process scrolling
+	if (showGUI && ImGui::GetIO().WantCaptureMouse) {
+		return; // GUI is handling this scroll event
+	}
+	
+	// Future: Could add zoom functionality here
 }
 
 //--------------------------------------------------------------
@@ -1052,6 +1043,379 @@ bool ofApp::lineSegmentIntersection(const ofPoint& line1Start, const ofPoint& li
 	}
 	
 	return false;
+}
+
+//--------------------------------------------------------------
+void ofApp::setupGUI() {
+	gui.setup();
+}
+
+//--------------------------------------------------------------
+void ofApp::drawGUI() {
+	if (!showGUI) return;
+	
+	gui.begin();
+	
+	// Main control window
+	if (ImGui::Begin("SonifyV1 Controls")) {
+		
+		// Detection Parameters Section
+		if (ImGui::CollapsingHeader("Detection Parameters", ImGuiTreeNodeFlags_DefaultOpen)) {
+			ImGui::SliderFloat("Confidence Threshold", &confidenceThreshold, 0.1f, 1.0f, "%.2f");
+			ImGui::SliderInt("Frame Skip", &frameSkipValue, 1, 10, "%d");
+			ImGui::Checkbox("Enable Detection", &enableDetection);
+			ImGui::Checkbox("Show Detections", &showDetections);
+			
+			// Apply changes to detection system
+			if (frameSkipValue != detectionFrameSkip) {
+				detectionFrameSkip = frameSkipValue;
+			}
+		}
+		
+		// OSC Settings Section  
+		if (ImGui::CollapsingHeader("OSC Settings")) {
+			ImGui::Checkbox("OSC Enabled", &oscEnabled);
+			
+			// Host input (read-only for now)
+			char hostBuffer[256];
+			strcpy(hostBuffer, oscHost.c_str());
+			if (ImGui::InputText("Host", hostBuffer, sizeof(hostBuffer), ImGuiInputTextFlags_ReadOnly)) {
+				oscHost = string(hostBuffer);
+			}
+			
+			ImGui::SliderInt("Port", &oscPort, 8000, 15000, "%d");
+			
+			// Reconnect button
+			if (ImGui::Button("Reconnect OSC")) {
+				oscSender.setup(oscHost, oscPort);
+				ofLogNotice() << "OSC reconnected to " << oscHost << ":" << oscPort;
+			}
+		}
+		
+		// Line Drawing Section
+		if (ImGui::CollapsingHeader("Line Drawing")) {
+			ImGui::Checkbox("Show Lines", &showLines);
+			ImGui::Text("Lines drawn: %d", (int)lines.size());
+			
+			if (ImGui::Button("Clear All Lines")) {
+				lines.clear();
+				lineColors.clear();
+				currentColorIndex = 0;
+			}
+			
+			// Instructions
+			ImGui::TextWrapped("Left click to start line, right click to finish line");
+		}
+		
+		// Video Controls Section
+		if (ImGui::CollapsingHeader("Video Controls")) {
+			if (useVideoFile && videoLoaded) {
+				ImGui::Text("Video: %s", currentVideoPath.c_str());
+				
+				// Play/Pause button
+				if (ImGui::Button(videoPaused ? "Play" : "Pause")) {
+					if (videoPaused) {
+						videoPlayer.play();
+						videoPaused = false;
+					} else {
+						videoPlayer.setPaused(true);
+						videoPaused = true;
+					}
+				}
+				
+				ImGui::SameLine();
+				if (ImGui::Button("Stop")) {
+					videoPlayer.stop();
+					videoPaused = true;
+				}
+				
+				// Seek bar
+				float position = videoPlayer.getPosition();
+				if (ImGui::SliderFloat("Position", &position, 0.0f, 1.0f, "%.2f")) {
+					videoPlayer.setPosition(position);
+				}
+				
+				// Loop toggle
+				bool loopState = videoPlayer.getLoopState() == OF_LOOP_NORMAL;
+				if (ImGui::Checkbox("Loop", &loopState)) {
+					videoPlayer.setLoopState(loopState ? OF_LOOP_NORMAL : OF_LOOP_NONE);
+				}
+				
+			} else if (cameraConnected) {
+				ImGui::Text("Camera connected");
+				if (ImGui::Button("Restart Camera")) {
+					camera.close();
+					camera.setup(640, 480, true);
+					cameraConnected = camera.isInitialized();
+				}
+			} else {
+				ImGui::Text("No video source");
+			}
+			
+			if (ImGui::Button("Load Video File")) {
+				// Trigger file dialog (existing 'o' key functionality)
+				keyPressed('o');
+			}
+			
+			if (ImGui::Button("Toggle Camera/Video")) {
+				keyPressed('v');
+			}
+		}
+		
+		// Status Section
+		if (ImGui::CollapsingHeader("Status", ImGuiTreeNodeFlags_DefaultOpen)) {
+			ImGui::Text("FPS: %.1f", ofGetFrameRate());
+			ImGui::Text("Detections: %d", (int)detections.size());
+			ImGui::Text("Tracked Vehicles: %d", (int)trackedVehicles.size());
+			ImGui::Text("Crossing Events: %d", (int)crossingEvents.size());
+			
+			if (enableDetection && yoloLoaded) {
+				ImGui::TextColored(ImVec4(0, 1, 0, 1), "Detection: ACTIVE");
+			} else {
+				ImGui::TextColored(ImVec4(1, 0, 0, 1), "Detection: INACTIVE");
+			}
+			
+			if (oscEnabled) {
+				ImGui::TextColored(ImVec4(0, 1, 0, 1), "OSC: CONNECTED");
+			} else {
+				ImGui::TextColored(ImVec4(1, 0.5, 0, 1), "OSC: DISABLED");
+			}
+		}
+		
+		// Configuration Section
+		if (ImGui::CollapsingHeader("Configuration")) {
+			ImGui::Text("Save/Load Settings");
+			
+			if (ImGui::Button("Save Config")) {
+				saveConfig();
+			}
+			
+			ImGui::SameLine();
+			if (ImGui::Button("Load Config")) {
+				loadConfig();
+			}
+			
+			ImGui::SameLine();
+			if (ImGui::Button("Reset to Defaults")) {
+				setDefaultConfig();
+			}
+			
+			ImGui::Separator();
+			
+			ImGui::Text("Config Path:");
+			ImGui::TextWrapped("%s", getConfigPath().c_str());
+			
+			ImGui::Text("Auto-save: On application exit");
+		}
+		
+		// Keyboard Shortcuts Section
+		if (ImGui::CollapsingHeader("Keyboard Shortcuts")) {
+			ImGui::Text("'d' - Toggle detection");
+			ImGui::Text("'o' - Open video file");
+			ImGui::Text("'v' - Toggle camera/video");
+			ImGui::Text("'r' - Restart camera");
+			ImGui::Text("'c' - Clear all lines");
+			ImGui::Text("'g' - Toggle this GUI");
+			ImGui::Text("SPACE - Play/pause video");
+			ImGui::Text("LEFT/RIGHT - Seek video");
+			ImGui::Text("'l' - Toggle video loop");
+		}
+	}
+	ImGui::End();
+	
+	gui.end();
+}
+
+//--------------------------------------------------------------
+string ofApp::getConfigPath() {
+	return ofToDataPath("config.json", true);
+}
+
+//--------------------------------------------------------------
+void ofApp::setDefaultConfig() {
+	// Detection settings
+	confidenceThreshold = 0.3f;
+	frameSkipValue = 3;
+	enableDetection = false;
+	showDetections = true;
+	showLines = true;
+	
+	// OSC settings
+	oscHost = "127.0.0.1";
+	oscPort = 12000;
+	oscEnabled = true;
+	
+	// GUI settings
+	showGUI = true;
+	
+	// Vehicle tracking settings
+	vehicleTrackingThreshold = 50.0f;
+	maxFramesWithoutDetection = 10;
+	
+	ofLogNotice() << "Default configuration applied";
+}
+
+//--------------------------------------------------------------
+void ofApp::saveConfig() {
+	ofxJSONElement config;
+	
+	// Detection settings
+	config["detection"]["confidenceThreshold"] = confidenceThreshold;
+	config["detection"]["frameSkip"] = frameSkipValue;
+	config["detection"]["enabled"] = enableDetection;
+	config["detection"]["showDetections"] = showDetections;
+	config["detection"]["showLines"] = showLines;
+	
+	// OSC settings
+	config["osc"]["host"] = oscHost;
+	config["osc"]["port"] = oscPort;
+	config["osc"]["enabled"] = oscEnabled;
+	
+	// GUI settings
+	config["gui"]["show"] = showGUI;
+	
+	// Vehicle tracking settings
+	config["tracking"]["threshold"] = vehicleTrackingThreshold;
+	config["tracking"]["maxFramesWithoutDetection"] = maxFramesWithoutDetection;
+	
+	// Video settings
+	config["video"]["useVideoFile"] = useVideoFile;
+	config["video"]["currentVideoPath"] = currentVideoPath;
+	
+	// Save lines
+	config["lines"]["count"] = (int)lines.size();
+	for (int i = 0; i < lines.size(); i++) {
+		config["lines"]["line_" + ofToString(i)]["startX"] = lines[i].first.x;
+		config["lines"]["line_" + ofToString(i)]["startY"] = lines[i].first.y;
+		config["lines"]["line_" + ofToString(i)]["endX"] = lines[i].second.x;
+		config["lines"]["line_" + ofToString(i)]["endY"] = lines[i].second.y;
+		if (i < lineColors.size()) {
+			config["lines"]["line_" + ofToString(i)]["colorR"] = lineColors[i].r;
+			config["lines"]["line_" + ofToString(i)]["colorG"] = lineColors[i].g;
+			config["lines"]["line_" + ofToString(i)]["colorB"] = lineColors[i].b;
+		}
+	}
+	
+	// Metadata
+	config["metadata"]["version"] = "1.0";
+	config["metadata"]["timestamp"] = ofGetTimestampString();
+	config["metadata"]["application"] = "SonifyV1";
+	
+	string configPath = getConfigPath();
+	bool saved = config.save(configPath, true);
+	
+	if (saved) {
+		ofLogNotice() << "Configuration saved to: " << configPath;
+	} else {
+		ofLogError() << "Failed to save configuration to: " << configPath;
+	}
+}
+
+//--------------------------------------------------------------
+void ofApp::loadConfig() {
+	string configPath = getConfigPath();
+	
+	if (!ofFile::doesFileExist(configPath)) {
+		ofLogNotice() << "Configuration file not found, using defaults: " << configPath;
+		setDefaultConfig();
+		return;
+	}
+	
+	ofxJSONElement config;
+	bool loaded = config.open(configPath);
+	
+	if (!loaded) {
+		ofLogError() << "Failed to load configuration from: " << configPath;
+		setDefaultConfig();
+		return;
+	}
+	
+	try {
+		// Detection settings
+		if (config["detection"].isObject()) {
+			confidenceThreshold = config["detection"]["confidenceThreshold"].asFloat();
+			frameSkipValue = config["detection"]["frameSkip"].asInt();
+			enableDetection = config["detection"]["enabled"].asBool();
+			showDetections = config["detection"]["showDetections"].asBool();
+			showLines = config["detection"]["showLines"].asBool();
+			
+			// Apply frame skip setting
+			detectionFrameSkip = frameSkipValue;
+		}
+		
+		// OSC settings
+		if (config["osc"].isObject()) {
+			oscHost = config["osc"]["host"].asString();
+			oscPort = config["osc"]["port"].asInt();
+			oscEnabled = config["osc"]["enabled"].asBool();
+			
+			// Reconnect OSC with loaded settings
+			if (oscEnabled) {
+				oscSender.setup(oscHost, oscPort);
+			}
+		}
+		
+		// GUI settings
+		if (config["gui"].isObject()) {
+			showGUI = config["gui"]["show"].asBool();
+		}
+		
+		// Vehicle tracking settings
+		if (config["tracking"].isObject()) {
+			vehicleTrackingThreshold = config["tracking"]["threshold"].asFloat();
+			maxFramesWithoutDetection = config["tracking"]["maxFramesWithoutDetection"].asInt();
+		}
+		
+		// Video settings
+		if (config["video"].isObject()) {
+			useVideoFile = config["video"]["useVideoFile"].asBool();
+			currentVideoPath = config["video"]["currentVideoPath"].asString();
+			
+			// Try to load the saved video file
+			if (useVideoFile && !currentVideoPath.empty() && ofFile::doesFileExist(currentVideoPath)) {
+				loadVideoFile(currentVideoPath);
+			}
+		}
+		
+		// Load lines
+		if (config["lines"].isObject()) {
+			lines.clear();
+			lineColors.clear();
+			
+			int lineCount = config["lines"]["count"].asInt();
+			for (int i = 0; i < lineCount; i++) {
+				string lineKey = "line_" + ofToString(i);
+				if (config["lines"][lineKey].isObject()) {
+					float startX = config["lines"][lineKey]["startX"].asFloat();
+					float startY = config["lines"][lineKey]["startY"].asFloat();
+					float endX = config["lines"][lineKey]["endX"].asFloat();
+					float endY = config["lines"][lineKey]["endY"].asFloat();
+					
+					lines.push_back(std::make_pair(ofPoint(startX, startY), ofPoint(endX, endY)));
+					
+					// Load color if available
+					if (config["lines"][lineKey]["colorR"].isNumeric()) {
+						ofColor color;
+						color.r = config["lines"][lineKey]["colorR"].asInt();
+						color.g = config["lines"][lineKey]["colorG"].asInt();
+						color.b = config["lines"][lineKey]["colorB"].asInt();
+						lineColors.push_back(color);
+					} else {
+						lineColors.push_back(getNextLineColor());
+					}
+				}
+			}
+			
+			// Update color index
+			currentColorIndex = lines.size() % 12;
+		}
+		
+		ofLogNotice() << "Configuration loaded successfully from: " << configPath;
+		
+	} catch (const std::exception& e) {
+		ofLogError() << "Error parsing configuration file: " << e.what();
+		setDefaultConfig();
+	}
 }
 
 //--------------------------------------------------------------
