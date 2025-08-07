@@ -28,6 +28,18 @@ void ofApp::setup(){
 	displayScale = 1.0f;  // Will be calculated based on window size vs 640x640
 	showUI = true;        // Start with UI visible
 	
+	// Initialize vehicle tracking system
+	nextVehicleId = 1;
+	vehicleTrackingThreshold = 50.0f;  // Max distance to consider same vehicle
+	maxFramesWithoutDetection = 10;   // Remove vehicles after this many missed frames
+	
+	// Initialize OSC communication
+	oscHost = "127.0.0.1";  // localhost
+	oscPort = 12000;        // Default port for Max/MSP
+	oscEnabled = true;
+	oscSender.setup(oscHost, oscPort);
+	ofLogNotice() << "OSC sender initialized: " << oscHost << ":" << oscPort;
+	
 	// Load CoreML YOLO model
 	loadCoreMLModel();
 	
@@ -80,6 +92,10 @@ void ofApp::update(){
 	// Process CoreML YOLO detection
 	if (enableDetection && yoloLoaded) {
 		processCoreMLDetection();
+		
+		// Update vehicle tracking and check for line crossings
+		updateVehicleTracking();
+		checkLineCrossings();
 	}
 }
 
@@ -581,12 +597,12 @@ void ofApp::loadCoreMLModel() {
 
 //--------------------------------------------------------------
 void ofApp::processCoreMLDetection() {
-	// Skip frames for performance
-	frameSkipCounter++;
-	if (frameSkipCounter < detectionFrameSkip) {
-		return;
-	}
-	frameSkipCounter = 0;
+	// Run every frame for maximum responsiveness
+	// frameSkipCounter++;
+	// if (frameSkipCounter < detectionFrameSkip) {
+	//	return;
+	// }
+	// frameSkipCounter = 0;
 	
 	// Get current frame (don't clear detections until we get new results)
 	ofPixels pixels;
@@ -602,10 +618,13 @@ void ofApp::processCoreMLDetection() {
 		return;
 	}
 	
-	// Use CoreML detector - run more frequently for real-time tracking
+	// Use CoreML detector - run every frame for maximum real-time tracking
 	static int counter = 0;
-	if (counter++ % 5 == 0) { // Every 5 frames for real-time tracking (~12 times per second)
-		ofLogNotice() << "Running CoreML object detection...";
+	if (counter++ % 1 == 0) { // Every frame for maximum real-time tracking (~60 times per second)
+		// Reduce logging frequency to avoid spam
+		if (counter % 30 == 0) { // Log every 30 frames (~2 times per second)
+			ofLogNotice() << "Running CoreML object detection...";
+		}
 		
 		[detector detectObjectsInPixels:pixels.getData()
 								   width:pixels.getWidth()
@@ -765,49 +784,274 @@ void ofApp::drawDetections() {
 				break;
 		}
 		
-		// Draw bounding box with vehicle-specific color
+		// Draw elegant bounding box with rounded corners effect
 		ofSetColor(boxColor);
-		ofSetLineWidth(3);
+		ofSetLineWidth(2);  // Thinner, more elegant line
 		ofNoFill();
+		
+		// Draw main rectangle with subtle style
 		ofDrawRectangle(x, y, w, h);
+		
+		// Add corner accents for a more professional look
+		ofSetLineWidth(3);
+		float cornerSize = 12 * displayScale;
+		// Top-left corner
+		ofDrawLine(x, y, x + cornerSize, y);
+		ofDrawLine(x, y, x, y + cornerSize);
+		// Top-right corner
+		ofDrawLine(x + w - cornerSize, y, x + w, y);
+		ofDrawLine(x + w, y, x + w, y + cornerSize);
+		// Bottom-left corner
+		ofDrawLine(x, y + h - cornerSize, x, y + h);
+		ofDrawLine(x, y + h, x + cornerSize, y + h);
+		// Bottom-right corner
+		ofDrawLine(x + w - cornerSize, y + h, x + w, y + h);
+		ofDrawLine(x + w, y + h - cornerSize, x + w, y + h);
+		
 		ofFill();
 		
-		// Draw confidence bar (small bar next to detection) - scaled
-		float confBarWidth = 60 * displayScale;
-		float confBarHeight = 8 * displayScale;
-		float confBarX = x + w + 5 * displayScale;
-		float confBarY = y;
+		// Draw sleeker confidence indicator inside the box
+		float confBarWidth = w * 0.8f;  // 80% of box width
+		float confBarHeight = 4 * displayScale;  // Thinner bar
+		float confBarX = x + (w - confBarWidth) / 2;  // Center horizontally
+		float confBarY = y + h - confBarHeight - 4 * displayScale;  // Bottom of box with padding
 		
-		// Background of confidence bar
-		ofSetColor(50, 50, 50, 180);
+		// Background of confidence bar with subtle transparency
+		ofSetColor(0, 0, 0, 120);
 		ofDrawRectangle(confBarX, confBarY, confBarWidth, confBarHeight);
 		
-		// Filled portion based on confidence
-		ofSetColor(boxColor);
+		// Filled portion based on confidence with glow effect
+		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 200);
 		ofDrawRectangle(confBarX, confBarY, confBarWidth * detection.confidence, confBarHeight);
 		
-		// Draw class label and confidence - scaled
+		// Draw compact class label with modern styling
 		string label = detection.className + " " + ofToString(detection.confidence, 2);
-		float labelWidth = label.length() * 8 * displayScale;
-		float labelHeight = 20 * displayScale;
+		float labelWidth = label.length() * 7 * displayScale;  // Slightly smaller font spacing
+		float labelHeight = 14 * displayScale;  // More compact height
 		
-		// Ensure label background fits on screen
-		float labelX = ofClamp(x, 0, ofGetWidth() - labelWidth);
-		float labelY = ofClamp(y - labelHeight, labelHeight, ofGetHeight());
+		// Position label at top-left of box with small padding
+		float labelX = x + 2 * displayScale;
+		float labelY = y;
 		
-		// Draw label background
-		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 180);
-		ofDrawRectangle(labelX, labelY - labelHeight, labelWidth, labelHeight);
+		// Ensure label fits on screen
+		labelX = ofClamp(labelX, 0, ofGetWidth() - labelWidth);
+		labelY = ofClamp(labelY, labelHeight, ofGetHeight());
 		
-		// Draw label text
-		ofSetColor(0, 0, 0); // Black text
-		ofDrawBitmapString(label, labelX + 2, labelY - 5);
+		// Draw modern label background with rounded appearance
+		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 200);
+		ofDrawRectangle(labelX - 2, labelY - labelHeight + 2, labelWidth + 4, labelHeight);
+		
+		// Add subtle border for definition
+		ofNoFill();
+		ofSetLineWidth(1);
+		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 150);
+		ofDrawRectangle(labelX - 2, labelY - labelHeight + 2, labelWidth + 4, labelHeight);
+		ofFill();
+		
+		// Draw label text with better contrast
+		ofSetColor(255, 255, 255); // White text for better readability
+		ofDrawBitmapString(label, labelX, labelY - 3);
 	}
 	
 	// Reset drawing state
 	ofSetColor(255);
 	ofSetLineWidth(1);
 	ofFill();
+}
+
+//--------------------------------------------------------------
+void ofApp::updateVehicleTracking() {
+	// Update existing tracked vehicles with new detections
+	for (auto& vehicle : trackedVehicles) {
+		vehicle.framesSinceLastSeen++;
+		vehicle.hasMovement = false;
+	}
+	
+	// Try to match current detections with tracked vehicles
+	for (const auto& detection : detections) {
+		ofPoint detectionCenter = ofPoint(
+			detection.box.x + detection.box.width / 2,
+			detection.box.y + detection.box.height / 2
+		);
+		
+		// Find closest tracked vehicle
+		int bestMatchIndex = -1;
+		float bestDistance = vehicleTrackingThreshold;
+		
+		for (int i = 0; i < trackedVehicles.size(); i++) {
+			float distance = calculateDistance(detectionCenter, trackedVehicles[i].centerCurrent);
+			if (distance < bestDistance && trackedVehicles[i].vehicleType == detection.classId) {
+				bestDistance = distance;
+				bestMatchIndex = i;
+			}
+		}
+		
+		if (bestMatchIndex >= 0) {
+			// Update existing vehicle
+			TrackedVehicle& vehicle = trackedVehicles[bestMatchIndex];
+			vehicle.previousBox = vehicle.currentBox;
+			vehicle.centerPrevious = vehicle.centerCurrent;
+			vehicle.currentBox = detection.box;
+			vehicle.centerCurrent = detectionCenter;
+			vehicle.confidence = detection.confidence;
+			vehicle.framesSinceLastSeen = 0;
+			
+			// Calculate movement and speed
+			float distance = calculateDistance(vehicle.centerCurrent, vehicle.centerPrevious);
+			vehicle.hasMovement = distance > 2.0f;
+			vehicle.speed = distance; // pixels per frame
+			
+			// Rough speed estimation (assumes ~30fps, 1 pixel ≈ 0.5 feet at highway distance)
+			// This is very rough - real world calibration would be needed
+			vehicle.speedMph = vehicle.speed * 30.0f * 0.5f * 0.681818f; // pixels/frame → mph
+		} else {
+			// Create new tracked vehicle
+			TrackedVehicle newVehicle;
+			newVehicle.id = nextVehicleId++;
+			newVehicle.currentBox = detection.box;
+			newVehicle.previousBox = detection.box;
+			newVehicle.centerCurrent = detectionCenter;
+			newVehicle.centerPrevious = detectionCenter;
+			newVehicle.vehicleType = detection.classId;
+			newVehicle.className = detection.className;
+			newVehicle.confidence = detection.confidence;
+			newVehicle.framesSinceLastSeen = 0;
+			newVehicle.hasMovement = false;
+			newVehicle.speed = 0.0f;
+			newVehicle.speedMph = 0.0f;
+			
+			trackedVehicles.push_back(newVehicle);
+			
+			ofLogNotice() << "New vehicle tracked: ID " << newVehicle.id 
+						  << " (" << newVehicle.className << ")";
+		}
+	}
+	
+	// Remove vehicles that haven't been seen for too long
+	trackedVehicles.erase(
+		std::remove_if(trackedVehicles.begin(), trackedVehicles.end(),
+			[this](const TrackedVehicle& v) {
+				if (v.framesSinceLastSeen > maxFramesWithoutDetection) {
+					ofLogNotice() << "Vehicle lost: ID " << v.id;
+					return true;
+				}
+				return false;
+			}),
+		trackedVehicles.end()
+	);
+}
+
+//--------------------------------------------------------------
+void ofApp::checkLineCrossings() {
+	// Check each tracked vehicle against each line
+	for (const auto& vehicle : trackedVehicles) {
+		if (!vehicle.hasMovement) continue;  // Skip stationary vehicles
+		
+		for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+			const auto& line = lines[lineIndex];
+			ofPoint intersection;
+			
+			// Check if vehicle's movement path crosses this line
+			if (lineSegmentIntersection(
+					vehicle.centerPrevious, vehicle.centerCurrent,
+					line.first, line.second,
+					intersection)) {
+				
+				// Create crossing event
+				LineCrossEvent crossEvent;
+				crossEvent.lineId = lineIndex;
+				crossEvent.vehicleId = vehicle.id;
+				crossEvent.vehicleType = vehicle.vehicleType;
+				crossEvent.className = vehicle.className;
+				crossEvent.confidence = vehicle.confidence;
+				crossEvent.speed = vehicle.speed;
+				crossEvent.speedMph = vehicle.speedMph;
+				crossEvent.timestamp = ofGetElapsedTimeMillis();
+				crossEvent.crossingPoint = intersection;
+				crossEvent.processed = false;
+				
+				crossingEvents.push_back(crossEvent);
+				
+				// Send OSC message immediately
+				sendOSCLineCrossing(crossEvent);
+				
+				ofLogNotice() << "Line crossing detected: Vehicle " << vehicle.id 
+							  << " (" << vehicle.className << ") crossed line " << lineIndex
+							  << " with confidence " << vehicle.confidence;
+			}
+		}
+	}
+}
+
+//--------------------------------------------------------------
+void ofApp::sendOSCLineCrossing(const LineCrossEvent& event) {
+	if (!oscEnabled) return;
+	
+	ofxOscMessage msg;
+	msg.setAddress("/line_cross");
+	msg.addIntArg(event.lineId);           // Line ID (which line was crossed)
+	msg.addIntArg(event.vehicleId);        // Vehicle ID  
+	msg.addIntArg(event.vehicleType);      // Vehicle type (COCO class ID)
+	msg.addStringArg(event.className);     // Vehicle class name
+	msg.addFloatArg(event.confidence);     // Confidence (0.0-1.0)
+	msg.addIntArg((int)(event.confidence * 127)); // MIDI velocity from confidence (0-127)
+	msg.addIntArg(60 + event.lineId);      // MIDI note (C4 + line offset)
+	msg.addIntArg(100);                    // Duration in milliseconds
+	msg.addFloatArg(event.speed);          // Speed in pixels per frame
+	msg.addFloatArg(event.speedMph);       // Estimated speed in MPH
+	msg.addIntArg((int)ofClamp(event.speed * 4, 0, 127)); // Speed-based velocity (0-127)
+	msg.addInt64Arg(event.timestamp);      // Timestamp
+	msg.addFloatArg(event.crossingPoint.x); // Crossing X position
+	msg.addFloatArg(event.crossingPoint.y); // Crossing Y position
+	
+	oscSender.sendMessage(msg, false);
+	
+	// Also send a simpler message format for basic Max patches
+	ofxOscMessage simpleMsg;
+	simpleMsg.setAddress("/note");
+	simpleMsg.addIntArg(60 + event.lineId);        // MIDI note
+	simpleMsg.addIntArg((int)ofClamp(event.speed * 4, 0, 127)); // Velocity (speed-based)
+	simpleMsg.addIntArg(100);                      // Duration (100ms default)
+	simpleMsg.addIntArg(event.vehicleType);        // Vehicle type (COCO class ID)
+	
+	oscSender.sendMessage(simpleMsg, false);
+	
+	ofLogNotice() << "OSC sent: /line_cross line=" << event.lineId 
+				  << " vehicle=" << event.className 
+				  << " velocity=" << (int)(event.confidence * 127)
+				  << " note=" << (60 + event.lineId);
+}
+
+//--------------------------------------------------------------
+float ofApp::calculateDistance(const ofPoint& p1, const ofPoint& p2) {
+	return sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
+}
+
+//--------------------------------------------------------------
+bool ofApp::lineSegmentIntersection(const ofPoint& line1Start, const ofPoint& line1End, 
+									const ofPoint& line2Start, const ofPoint& line2End, 
+									ofPoint& intersection) {
+	float x1 = line1Start.x, y1 = line1Start.y;
+	float x2 = line1End.x, y2 = line1End.y;
+	float x3 = line2Start.x, y3 = line2Start.y;
+	float x4 = line2End.x, y4 = line2End.y;
+	
+	float denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+	
+	if (abs(denom) < 0.001f) {
+		return false; // Lines are parallel
+	}
+	
+	float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+	float u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+	
+	if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+		intersection.x = x1 + t * (x2 - x1);
+		intersection.y = y1 + t * (y2 - y1);
+		return true;
+	}
+	
+	return false;
 }
 
 //--------------------------------------------------------------
