@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild:*)",
+      "Bash(source:*)",
+      "Bash(conda activate:*)",
+      "Bash(conda install:*)",
+      "Bash(/Users/justmac/miniconda3/envs/sonifyml/bin/pip install onnx onnxruntime opencv-python)",
+      "Bash(./SonifyV1)",
+      "Bash(make:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

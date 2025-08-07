@@ -1,0 +1,27 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "${workspaceRoot}/../../../../libs/openFrameworks"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxImGui"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxJSON"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOpenCv"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOsc"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxTensorFlow2"
+		}
+	],
+	"openFrameworksProjectGeneratorVersion": "0.103.0",
+	"settings": {}
+}
