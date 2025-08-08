@@ -1,13 +1,83 @@
 {
-  "detection": {
-    "confidenceThreshold": 0.7,
-    "enabled": false
-  },
-  "osc": {
-    "host": "127.0.0.1",
-    "port": 12001
-  },
-  "test": {
-    "timestamp": 1754586909.334147
-  }
+   "detection" : {
+      "confidenceThreshold" : 0.4300000071525574,
+      "enabled" : true,
+      "frameSkip" : 1,
+      "showDetections" : true,
+      "showLines" : true
+   },
+   "gui" : {
+      "show" : true
+   },
+   "lines" : {
+      "count" : 2,
+      "line_0" : {
+         "colorB" : 128,
+         "colorG" : 0,
+         "colorR" : 128,
+         "durationType" : 0,
+         "endX" : 354,
+         "endY" : 204,
+         "fixedDuration" : 500,
+         "fixedVelocity" : 100,
+         "midiChannel" : 1,
+         "midiPortName" : "IAC Driver Bus 1",
+         "octave" : 4,
+         "randomizeNote" : true,
+         "scaleNoteIndex" : 0,
+         "startX" : 282,
+         "startY" : 204,
+         "velocityType" : 0
+      },
+      "line_1" : {
+         "colorB" : 128,
+         "colorG" : 0,
+         "colorR" : 128,
+         "durationType" : 0,
+         "endX" : 499,
+         "endY" : 136,
+         "fixedDuration" : 500,
+         "fixedVelocity" : 100,
+         "midiChannel" : 1,
+         "midiPortName" : "IAC Driver Bus 1",
+         "octave" : 4,
+         "randomizeNote" : true,
+         "scaleNoteIndex" : 0,
+         "startX" : 463,
+         "startY" : 137,
+         "velocityType" : 0
+      }
+   },
+   "masterMusicalSystem" : {
+      "rootNote" : 4,
+      "scale" : "Minor"
+   },
+   "metadata" : {
+      "application" : "SonifyV1",
+      "timestamp" : "2025-08-08-22-06-23-906",
+      "version" : "1.0"
+   },
+   "osc" : {
+      "enabled" : true,
+      "host" : "127.0.0.1",
+      "port" : 15000
+   },
+   "tracking" : {
+      "enableOcclusionTracking" : false,
+      "maxFramesWithoutDetection" : 10,
+      "maxTrajectoryPoints" : 10,
+      "showTrajectoryTrails" : false,
+      "showVelocityVectors" : false,
+      "threshold" : 50,
+      "trailFadeTime" : 0.800000011920929
+   },
+   "video" : {
+      "currentVideoPath" : "test_video.mp4",
+      "useVideoFile" : true
+   },
+   "window" : {
+      "originalHeight" : 648,
+      "originalWidth" : 1203
+   }
 }
+

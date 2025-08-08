@@ -454,7 +454,47 @@ obj/osx/Release/src/main.o: src/main.cpp \
   ../../../libs/openFrameworks/3d/of3dUtils.h \
   ../../../libs/openFrameworks/3d/ofCamera.h \
   ../../../libs/openFrameworks/3d/ofEasyCam.h src/ofApp.h \
-  src/CoreMLDetector.h
+  src/CoreMLDetector.h ../../../addons/ofxOsc/src/ofxOsc.h \
+  ../../../addons/ofxOsc/src/ofxOscArg.h \
+  ../../../addons/ofxOsc/src/ofxOscMessage.h \
+  ../../../addons/ofxOsc/src/ofxOscSender.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/OscOutboundPacketStream.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/OscTypes.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/OscException.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/ip/UdpSocket.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/ip/NetworkingUtils.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/ip/IpEndpointName.h \
+  ../../../addons/ofxOsc/src/ofxOscBundle.h \
+  ../../../addons/ofxOsc/src/ofxOscReceiver.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/OscPacketListener.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/OscReceivedElements.h \
+  ../../../addons/ofxOsc/libs/oscpack/src/osc/../ip/PacketListener.h \
+  ../../../addons/ofxImGui/src/ofxImGui.h \
+  ../../../addons/ofxImGui/libs/imgui/src/imgui.h \
+  ../../../addons/ofxImGui/src/imconfig.h \
+  ../../../addons/ofxImGui/src/Gui.h \
+  ../../../addons/ofxImGui/src/EngineGLFW.h \
+  ../../../libs/glfw/include/GLFW/glfw3.h \
+  ../../../addons/ofxImGui/src/BaseEngine.h \
+  ../../../addons/ofxImGui/src/DefaultTheme.h \
+  ../../../addons/ofxImGui/src/BaseTheme.h \
+  ../../../addons/ofxImGui/src/ImHelpers.h \
+  ../../../addons/ofxJSON/src/ofxJSON.h \
+  ../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h \
+  ../../../addons/ofxJSON/src/ofxJSONElement.h \
+  ../../../addons/ofxMidi/src/ofxMidi.h \
+  ../../../addons/ofxMidi/src/ofxMidiIn.h \
+  ../../../addons/ofxMidi/src/ofxBaseMidi.h \
+  ../../../addons/ofxMidi/src/ofxMidiConstants.h \
+  ../../../addons/ofxMidi/src/ofxMidiMessage.h \
+  ../../../addons/ofxMidi/src/ofxMidiTypes.h \
+  ../../../addons/ofxMidi/src/desktop/ofxRtMidiIn.h \
+  ../../../addons/ofxMidi/libs/rtmidi/RtMidi.h \
+  ../../../addons/ofxMidi/src/desktop/../ofxBaseMidi.h \
+  ../../../addons/ofxMidi/src/ofxMidiOut.h \
+  ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h \
+  ../../../addons/ofxMidi/src/ofxMidiClock.h \
+  ../../../addons/ofxMidi/src/ofxMidiTimecode.h
 ../../../libs/openFrameworks/ofMain.h:
 ../../../libs/openFrameworks/utils/ofConstants.h:
 ../../../libs/glew/include/GL/glew.h:
@@ -912,3 +952,44 @@ obj/osx/Release/src/main.o: src/main.cpp \
 ../../../libs/openFrameworks/3d/ofEasyCam.h:
 src/ofApp.h:
 src/CoreMLDetector.h:
+../../../addons/ofxOsc/src/ofxOsc.h:
+../../../addons/ofxOsc/src/ofxOscArg.h:
+../../../addons/ofxOsc/src/ofxOscMessage.h:
+../../../addons/ofxOsc/src/ofxOscSender.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/OscOutboundPacketStream.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/OscTypes.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/OscException.h:
+../../../addons/ofxOsc/libs/oscpack/src/ip/UdpSocket.h:
+../../../addons/ofxOsc/libs/oscpack/src/ip/NetworkingUtils.h:
+../../../addons/ofxOsc/libs/oscpack/src/ip/IpEndpointName.h:
+../../../addons/ofxOsc/src/ofxOscBundle.h:
+../../../addons/ofxOsc/src/ofxOscReceiver.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/OscPacketListener.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/OscReceivedElements.h:
+../../../addons/ofxOsc/libs/oscpack/src/osc/../ip/PacketListener.h:
+../../../addons/ofxImGui/src/ofxImGui.h:
+../../../addons/ofxImGui/libs/imgui/src/imgui.h:
+../../../addons/ofxImGui/src/imconfig.h:
+../../../addons/ofxImGui/src/Gui.h:
+../../../addons/ofxImGui/src/EngineGLFW.h:
+../../../libs/glfw/include/GLFW/glfw3.h:
+../../../addons/ofxImGui/src/BaseEngine.h:
+../../../addons/ofxImGui/src/DefaultTheme.h:
+../../../addons/ofxImGui/src/BaseTheme.h:
+../../../addons/ofxImGui/src/ImHelpers.h:
+../../../addons/ofxJSON/src/ofxJSON.h:
+../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h:
+../../../addons/ofxJSON/src/ofxJSONElement.h:
+../../../addons/ofxMidi/src/ofxMidi.h:
+../../../addons/ofxMidi/src/ofxMidiIn.h:
+../../../addons/ofxMidi/src/ofxBaseMidi.h:
+../../../addons/ofxMidi/src/ofxMidiConstants.h:
+../../../addons/ofxMidi/src/ofxMidiMessage.h:
+../../../addons/ofxMidi/src/ofxMidiTypes.h:
+../../../addons/ofxMidi/src/desktop/ofxRtMidiIn.h:
+../../../addons/ofxMidi/libs/rtmidi/RtMidi.h:
+../../../addons/ofxMidi/src/desktop/../ofxBaseMidi.h:
+../../../addons/ofxMidi/src/ofxMidiOut.h:
+../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h:
+../../../addons/ofxMidi/src/ofxMidiClock.h:
+../../../addons/ofxMidi/src/ofxMidiTimecode.h:

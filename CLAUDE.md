@@ -172,13 +172,15 @@ make Debug
 - 🔄 **CoreML Architecture**: Complete migration to Apple frameworks
 - ✅ **Build System Updated**: Native Apple framework integration
 
-#### 2025-08-08: Professional System Complete
+#### 2025-08-08: Professional System Complete + MIDI UI Foundation
 - ✅ **CoreML Integration**: YOLOv8 running on Apple Neural Engine
 - ✅ **Vehicle Tracking**: Persistent IDs with trajectory analysis
 - ✅ **Line Crossing System**: Real-time crossing detection and OSC messaging
 - ✅ **Professional GUI**: Complete ImGui interface with all controls
 - ✅ **Configuration System**: JSON persistence for all application state
 - ✅ **Enhanced Features**: Trajectory trails, velocity vectors, occlusion tracking
+- ✅ **Tabbed Interface**: Optimized 1050x640 layout with Main Controls + MIDI Settings tabs
+- ✅ **Line Management**: Complete selection, editing, deletion, and endpoint dragging system
 
 ### Key Technical Achievements
 - **CoreML Performance**: 3-5x improvement over ONNX implementation
@@ -186,30 +188,225 @@ make Debug
 - **Real-time Processing**: 60fps detection with sub-10ms OSC latency
 - **Professional Stability**: Extended operation without memory leaks
 - **Feature Complete**: All Week 1 requirements from implementation guide satisfied
+- **✅ MIDI UI Foundation**: Clean tabbed interface ready for MIDI implementation
 
-## Current Status: PRODUCTION READY ✅
+## 🎵 CURRENT MILESTONE: MIDI INTEGRATION SYSTEM
 
-### System Health
-- **Stability**: Tested for extended operation without issues
-- **Performance**: All targets met (60fps detection, <10ms OSC latency)
-- **Memory**: Stable usage during long-running sessions
-- **Reliability**: Robust error handling and graceful degradation
+### ✅ Current Status: UI FOUNDATION COMPLETE - READY FOR MIDI IMPLEMENTATION
+- **Core System**: Production ready with CoreML + OSC + Professional tabbed GUI
+- **✅ UI Foundation**: Tabbed interface implemented (1050x640 optimized layout)
+- **✅ Line Management**: Selection, editing, deletion, and endpoint dragging complete
+- **Next Phase**: MIDI infrastructure integration starting with Task 2.1 (ofxMidi)
 
-### Next Development Phase
-**Ready for Week 2 Implementation:**
-- Enhanced object tracking with persistent trajectories
-- Zone-based musical properties system  
-- Multi-camera support for gallery installations
-- Network features for distributed setups
-- Advanced audio-visual feedback loops
+## MIDI System Specification
+
+### Core MIDI Features
+#### **Multi-Port MIDI Output**
+- **Library**: ofxMidi for native openFrameworks integration
+- **Ports**: Support multiple simultaneous MIDI output ports
+- **Default**: IAC Driver Channel 1 with auto-detection of available ports
+- **Real-time**: Note-on/note-off with precise timing
+
+#### **✅ Master Musical System - IMPLEMENTED**
+**Global Musical Framework:**
+- **Master Root Key**: Global root note (C, C#, D, etc.) affecting all lines
+- **Master Scale**: Global musical scale (Major, Minor, Pentatonic, Blues, Chromatic) used by all lines
+- **Unified Musical Logic**: All lines work within same musical framework for coherent output
+
+**Per-Line Musical Properties:**
+Each drawn line has these individual properties:
+- **Scale Note Selection**: Choose specific note from master scale OR enable randomization
+- **Randomization Toggle**: Per-line random note selection from master scale
+- **Octave Range**: 0-10 for full MIDI range coverage (per-line)
+- **MIDI Channel**: 1-16 (default: 1, per-line)
+- **MIDI Port**: Selectable from available ports (per-line)
+- **Duration Modes**: 
+  - Fixed duration (user-defined milliseconds)
+  - Speed-based (faster vehicles = shorter notes)
+  - Vehicle-type based (truck=750ms, car=250ms, motorcycle=150ms)
+- **Velocity Modes**:
+  - Fixed velocity (0-127)
+  - Confidence-based (detection confidence → velocity)
+
+#### **Vehicle-Type Duration Mapping**
+```
+Car (class 2):        250ms (standard)
+Motorcycle (class 3): 150ms (quick, agile)
+Bus (class 5):        500ms (substantial)
+Truck (class 7):      750ms (massive, long)
+Speed Override:       duration = baseTime * (1.0 / normalizedSpeed)
+```
+
+#### **✅ Master Musical Scale System**
+**Global Scale Definitions:**
+- **Major Scale**: C, D, E, F, G, A, B (intervals: 0,2,4,5,7,9,11)
+- **Minor Scale**: C, D, Eb, F, G, Ab, Bb (intervals: 0,2,3,5,7,8,10)
+- **Pentatonic**: C, D, E, G, A (intervals: 0,2,4,7,9)
+- **Blues Scale**: C, Eb, F, F#, G, Bb (intervals: 0,3,5,6,7,10)
+- **Chromatic**: All 12 notes (intervals: 0,1,2,3,4,5,6,7,8,9,10,11)
+
+**Note Selection Logic:**
+- **Master Scale Controls All**: Single global scale affects all lines
+- **Per-Line Randomization**: Each line can enable/disable random note selection
+- **Fixed Note Selection**: When randomization OFF, user selects specific scale note index
+- **Musical Coherence**: All lines stay within same key/scale for harmonic consistency
+
+### ✅ Advanced UI Design - TABBED INTERFACE IMPLEMENTED
+#### **Optimized Window Layout**
+- **Total Size**: 1050x640 pixels (optimized for better proportions)
+- **Video Area**: 640x640 (left side, unchanged for existing functionality)  
+- **Tabbed GUI Sidebar**: 410x640 (right side, organized in tabs)
+- **Clean Interface**: No overlapping panels or excessive width
+- **Responsive**: All existing controls remain accessible
+
+#### **✅ Tabbed Interface Structure**
+**Main Controls Tab**:
+- Detection Settings (confidence, frame skip, enable/disable)
+- Enhanced Tracking (trajectory trails, velocity vectors, occlusion)
+- OSC Settings (host, port, connection management)
+- Line Drawing (show/hide, clear all, instructions)
+- Video Controls (play/pause, seek, file loading, camera)
+- Status (FPS, detections, tracking stats, system status)
+- Configuration (save/load, defaults)
+- Keyboard Shortcuts (complete reference)
+- Live Tracking Data (vehicle details, moved to bottom)
+
+**MIDI Settings Tab**:
+1. **Master Musical System Panel** (top section)
+   - Global root key selector (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
+   - Global scale selector (Major, Minor, Pentatonic, Blues, Chromatic)
+   - Shows current master scale notes for reference
+   
+2. **Lines List Panel** (upper-middle section)
+   - Shows all drawn lines with color indicators and musical properties
+   - Click line to select and highlight
+   - Visual color squares matching line colors
+   
+3. **MIDI Properties Panel** (lower-middle section)  
+   - Per-line randomization toggle for selected line
+   - Scale note selector (when randomization OFF) 
+   - MIDI channel and port selection
+   - Duration and velocity mode configuration
+   - Real-time property modification
+   
+4. **MIDI System Panel** (bottom section)
+   - Available MIDI ports with connection status
+   - Multi-port output configuration  
+   - MIDI activity indicator and debugging info
+   - Refresh Ports and Test MIDI buttons
+
+#### **Line Management System**
+- **Selection**: Click any line to select and highlight
+- **Visual Feedback**: Selected line shows with different color/outline
+- **Properties Display**: Selected line properties appear in sidebar
+- **Editing**: Move lines by dragging endpoints
+- **Deletion**: Right-click context menu or delete key
+- **Duplication**: Copy line with all musical properties
+
+### MIDI CC System (Future Expansion)
+#### **Placeholder CC Implementation**
+- **CC1**: Vehicle speed mapping (0-127)
+- **CC7**: Detection confidence (0-127) 
+- **CC10**: Line position pan (left=0, center=64, right=127)
+- **CC11**: Vehicle type modifier (car=32, truck=96, etc.)
+- **Configurable**: Each line can send custom CC numbers and values
+- **Real-time**: CC values update continuously during vehicle tracking
+
+### Window Resize Management
+#### **Resolution Locking System**
+- **Problem**: Line coordinates become invalid if window size changes
+- **Solution**: Save absolute pixel coordinates with window resolution
+- **Warning System**: Modal dialog when window size changes
+- **Auto-Rescaling**: Button to proportionally scale all lines to new resolution
+- **Backup**: Option to restore original resolution
+
+### Technical Integration
+#### **Data Structure Enhancement**
+```cpp
+// ✅ UPDATED: Master Musical System Data Structure
+struct MidiLine {
+    // Visual properties
+    ofPoint startPoint;
+    ofPoint endPoint;
+    ofColor color;
+    
+    // ✅ NEW: Master Scale System MIDI properties
+    int scaleNoteIndex;     // Index into master scale (0 = first note of scale, 1 = second, etc.)
+    bool randomizeNote;     // Per-line randomization toggle
+    int octave;             // 0-10 (default 4 for middle octave)
+    int midiChannel;        // 1-16 (default 1)
+    string midiPortName;    // Selected MIDI port name
+    
+    // Duration settings
+    enum DurationType { DURATION_FIXED, SPEED_BASED, VEHICLE_BASED };
+    DurationType durationType;
+    int fixedDuration;      // milliseconds (default 500)
+    
+    // Velocity settings  
+    enum VelocityType { VELOCITY_FIXED, CONFIDENCE_BASED };
+    VelocityType velocityType;
+    int fixedVelocity;      // 0-127 (default 100)
+};
+
+// ✅ NEW: Master Musical System Variables
+int masterRootNote;         // 0-11 (C=0, C#=1, etc.) - global root key
+string masterScale;         // "Major", "Minor", "Pentatonic", "Blues", "Chromatic" - global scale
+```
+
+#### **MIDI Manager System**
+- **Port Detection**: Auto-discover all available MIDI ports
+- **Multi-Output**: Send to multiple ports simultaneously
+- **Threading**: Non-blocking MIDI transmission
+- **Error Handling**: Graceful port disconnect/reconnect
+- **Monitoring**: Real-time MIDI activity display
+
+### 🎵 CURRENT PHASE: COMPREHENSIVE MIDI SYSTEM
+**Week 1.5 - Advanced Musical Integration:**
+- **MIDI Output System**: Full MIDI note transmission alongside OSC
+- **Line Musical Properties**: Each line becomes a musical instrument
+- **Multi-Port MIDI Support**: Send to multiple DAWs simultaneously
+- **Advanced UI**: Expanded interface with dedicated MIDI controls
+- **Musical Intelligence**: Scale-based note selection and vehicle-type duration mapping
 
 ### Reference Documentation
-- **Implementation Guide**: `sonifyv2_implementation_guide.md`
+- **Original Implementation**: `sonifyv2_implementation_guide.md`
 - **Environment Setup**: `sonifyv2_modern_context.md`
-- **Main Application**: `src/ofApp.cpp` (1706 lines)
-- **Header File**: `src/ofApp.h` (181 lines)
+- **MIDI Task Guide**: `sonifyv1_midi_implementation.md` (NEW)
+- **Main Application**: `src/ofApp.cpp` (1706+ lines, expanding)
+- **Header File**: `src/ofApp.h` (181+ lines, expanding)
 - **CoreML Interface**: `CoreMLDetector.h`
+
+## Implementation Phases
+
+### 📋 MIDI Development Roadmap
+**Estimated Time**: 12-15 hours total development
+**Target**: Complete MIDI system integrated with existing CoreML/OSC functionality
+
+#### **Phase 1: UI Foundation** (2-3 hours)
+- Expand window to 1200x640 with video + sidebar layout
+- Implement line selection and highlighting system
+- Create sidebar panel structure for MIDI controls
+
+#### **Phase 2: MIDI Infrastructure** (3-4 hours)
+- Integrate ofxMidi addon and basic MIDI output
+- Implement multi-port MIDI detection and management
+- Create MidiManager class with port handling
+
+#### **Phase 3: Musical Properties** (4-5 hours)
+- Extend line data structure with musical properties
+- Implement musical scale system and random note selection
+- Create comprehensive MIDI properties GUI panel
+
+#### **Phase 4: Advanced Features** (3-4 hours)
+- Add vehicle-type duration mapping system
+- ✅ **Line editing (move, delete, duplicate) - COMPLETED**
+- Add CC placeholder system for future expansion
+
+#### **Phase 5: Integration & Polish** (2-3 hours)
+- Window resize warning and line rescaling system
+- MIDI testing with multiple DAWs and ports
+- Configuration system updates for MIDI properties
 
 ---
 *Last Updated: 2025-08-08*  
-*Status: 🎉 **WEEK 1 COMPLETE** - Professional highway sonification system ready for gallery deployment*
+*Status: ✅ **MIDI UI FOUNDATION COMPLETE** - Tabbed interface ready, proceeding to MIDI infrastructure (Task 2.1)*

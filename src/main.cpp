@@ -4,8 +4,8 @@
 //========================================================================
 int main( ){
 	ofGLWindowSettings settings;
-	settings.setSize(640, 640);   // Always start as square to match detection resolution
-	// Resizable but should maintain square aspect ratio for proper coordinate mapping
+	settings.setSize(1050, 640);   // Expanded for tabbed interface: 640x640 video + 410px tabbed GUI
+	// Video area: 640x640 (left), Tabbed GUI: 410px (right) with Main Controls + MIDI Settings tabs
 	settings.windowMode = OF_WINDOW;
 
 	auto window = ofCreateWindow(settings);
