@@ -5,6 +5,10 @@ void ofApp::setup(){
 	ofSetFrameRate(60);  // Let app run at 60fps for responsiveness
 	ofSetBackgroundColor(0, 0, 0);  // Black background instead of green
 	
+	// Initialize detection class selection system
+	maxSelectedClasses = 8;  // Maximum number of classes that can be selected
+	initializeCategories();
+	
 	// Initialize video mode flags
 	useVideoFile = false;
 	videoLoaded = false;
@@ -505,8 +509,15 @@ void ofApp::mouseExited(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-	// Handle window resize events - video area remains fixed at 640x640 on left side
-	ofLogNotice() << "Window resized to: " << w << "x" << h;
+	// Attempt to enforce fixed window size by resetting it
+	if (w != 1050 || h != 640) {
+		ofSetWindowShape(1050, 640);
+		ofLogNotice() << "Enforcing fixed window size 1050x640";
+		return;
+	}
+	
+	// If we get here, window size is correct or couldn't be enforced
+	ofLogNotice() << "Window size: " << w << "x" << h;
 	
 	// Display scale is always 1.0 since video area is fixed at 640x640
 	displayScale = 1.0f;
@@ -518,12 +529,6 @@ void ofApp::windowResized(int w, int h){
 	
 	// Force a detection update on next frame
 	frameSkipCounter = 0;
-	
-	// Task 5.1: Show window resize warning if size changed significantly
-	if (abs(w - originalWindowWidth) > 50 || abs(h - originalWindowHeight) > 50) {
-		showResizeWarning = true;
-		ofLogNotice() << "Window size changed significantly, showing resize warning dialog";
-	}
 }
 
 //--------------------------------------------------------------
@@ -860,20 +865,24 @@ void ofApp::processCoreMLDetection() {
 								  detections.clear();
 								  
 								  for (CoreMLDetection* coremlDet in coremlDetections) {
-									  Detection detection;
-									  
-									  // CoreML detector returns coordinates in 640x640 display space
-									  // Direct mapping to our fixed 640x640 window
-									  detection.box.x = coremlDet.x;
-									  detection.box.y = coremlDet.y;
-									  detection.box.width = coremlDet.width;
-									  detection.box.height = coremlDet.height;
-									  
-									  detection.confidence = coremlDet.confidence;
-									  detection.classId = coremlDet.classId;
-									  detection.className = [coremlDet.className UTF8String];
-									  
-									  detections.push_back(detection);
+									  // Filter by class - only include selected classes
+									  int classId = coremlDet.classId;
+									  if (classId >= 0 && classId < enabledClasses.size() && enabledClasses[classId]) {
+										  Detection detection;
+										  
+										  // CoreML detector returns coordinates in 640x640 display space
+										  // Direct mapping to our fixed 640x640 window
+										  detection.box.x = coremlDet.x;
+										  detection.box.y = coremlDet.y;
+										  detection.box.width = coremlDet.width;
+										  detection.box.height = coremlDet.height;
+										  
+										  detection.confidence = coremlDet.confidence;
+										  detection.classId = coremlDet.classId;
+										  detection.className = [coremlDet.className UTF8String];
+										  
+										  detections.push_back(detection);
+									  }
 								  }
 								  
 								  ofLogNotice() << "Found " << detections.size() << " objects";
@@ -988,37 +997,37 @@ void ofApp::drawDetections() {
 		w = ofClamp(w, 1, ofGetWidth() - x);
 		h = ofClamp(h, 1, ofGetHeight() - y);
 		
-		// Choose color based on vehicle type
+		// Choose color based on vehicle type - with reduced opacity for calmer look
 		ofColor boxColor;
 		switch (detection.classId) {
 			case 2: // car
-				boxColor = ofColor(0, 255, 0, 220); // Green
+				boxColor = ofColor(0, 200, 0, 150); // Softer Green
 				break;
 			case 3: // motorcycle  
-				boxColor = ofColor(255, 255, 0, 220); // Yellow
+				boxColor = ofColor(200, 200, 0, 150); // Softer Yellow
 				break;
 			case 5: // bus
-				boxColor = ofColor(255, 0, 0, 220); // Red
+				boxColor = ofColor(200, 0, 0, 150); // Softer Red
 				break;
 			case 7: // truck
-				boxColor = ofColor(0, 0, 255, 220); // Blue
+				boxColor = ofColor(0, 0, 200, 150); // Softer Blue
 				break;
 			default:
-				boxColor = ofColor(255, 255, 255, 220); // White
+				boxColor = ofColor(180, 180, 180, 150); // Softer White
 				break;
 		}
 		
-		// Draw elegant bounding box with rounded corners effect
+		// Draw more subtle bounding box
 		ofSetColor(boxColor);
-		ofSetLineWidth(2);  // Thinner, more elegant line
+		ofSetLineWidth(1.5);  // Thinner line
 		ofNoFill();
 		
 		// Draw main rectangle with subtle style
 		ofDrawRectangle(x, y, w, h);
 		
-		// Add corner accents for a more professional look
-		ofSetLineWidth(3);
-		float cornerSize = 12 * displayScale;
+		// Add corner accents with reduced size and line width
+		ofSetLineWidth(2);
+		float cornerSize = 8 * displayScale; // Smaller corners
 		// Top-left corner
 		ofDrawLine(x, y, x + cornerSize, y);
 		ofDrawLine(x, y, x, y + cornerSize);
@@ -1034,24 +1043,24 @@ void ofApp::drawDetections() {
 		
 		ofFill();
 		
-		// Draw sleeker confidence indicator inside the box
-		float confBarWidth = w * 0.8f;  // 80% of box width
-		float confBarHeight = 4 * displayScale;  // Thinner bar
+		// Draw thinner confidence indicator
+		float confBarWidth = w * 0.7f;  // 70% of box width
+		float confBarHeight = 3 * displayScale;  // Even thinner bar
 		float confBarX = x + (w - confBarWidth) / 2;  // Center horizontally
-		float confBarY = y + h - confBarHeight - 4 * displayScale;  // Bottom of box with padding
+		float confBarY = y + h - confBarHeight - 3 * displayScale;  // Bottom of box with padding
 		
 		// Background of confidence bar with subtle transparency
-		ofSetColor(0, 0, 0, 120);
+		ofSetColor(0, 0, 0, 90); // More transparent
 		ofDrawRectangle(confBarX, confBarY, confBarWidth, confBarHeight);
 		
-		// Filled portion based on confidence with glow effect
-		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 200);
+		// Filled portion based on confidence with reduced opacity
+		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 150);
 		ofDrawRectangle(confBarX, confBarY, confBarWidth * detection.confidence, confBarHeight);
 		
-		// Draw compact class label with modern styling
+		// Draw compact class label with more subtle styling
 		string label = detection.className + " " + ofToString(detection.confidence, 2);
-		float labelWidth = label.length() * 7 * displayScale;  // Slightly smaller font spacing
-		float labelHeight = 14 * displayScale;  // More compact height
+		float labelWidth = label.length() * 6.5 * displayScale;  // Slightly smaller
+		float labelHeight = 12 * displayScale;  // More compact height
 		
 		// Position label at top-left of box with small padding
 		float labelX = x + 2 * displayScale;
@@ -1061,19 +1070,12 @@ void ofApp::drawDetections() {
 		labelX = ofClamp(labelX, 0, ofGetWidth() - labelWidth);
 		labelY = ofClamp(labelY, labelHeight, ofGetHeight());
 		
-		// Draw modern label background with rounded appearance
-		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 200);
+		// Draw label background with reduced opacity
+		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 130);
 		ofDrawRectangle(labelX - 2, labelY - labelHeight + 2, labelWidth + 4, labelHeight);
-		
-		// Add subtle border for definition
-		ofNoFill();
-		ofSetLineWidth(1);
-		ofSetColor(boxColor.r, boxColor.g, boxColor.b, 150);
-		ofDrawRectangle(labelX - 2, labelY - labelHeight + 2, labelWidth + 4, labelHeight);
-		ofFill();
 		
 		// Draw label text with better contrast
-		ofSetColor(255, 255, 255); // White text for better readability
+		ofSetColor(255, 255, 255, 220); // White text with slight transparency
 		ofDrawBitmapString(label, labelX, labelY - 3);
 	}
 	
@@ -1559,21 +1561,33 @@ void ofApp::cleanupOldTrajectoryPoints() {
 void ofApp::setupGUI() {
 	gui.setup();
 	
-	// Set blue-themed color scheme
+	// Set a more subtle and calmer color scheme
 	ImGuiStyle& style = ImGui::GetStyle();
+	style.WindowRounding = 2.0f;         // Slightly rounded corners
+	style.FrameRounding = 3.0f;          // Rounded buttons and frames
+	style.ItemSpacing = ImVec2(8, 6);    // Add more space between items
+	style.ScrollbarSize = 14.0f;         // Wider scrollbars
+	
 	ImVec4* colors = style.Colors;
 	
-	// Dark blue theme with blue accents
-	colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.06f, 0.12f, 0.94f);  // Dark blue background
-	colors[ImGuiCol_Header] = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);    // Blue header
-	colors[ImGuiCol_HeaderHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.80f);
-	colors[ImGuiCol_HeaderActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_Button] = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);    // Blue buttons
-	colors[ImGuiCol_ButtonHovered] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_ButtonActive] = ImVec4(0.06f, 0.53f, 0.98f, 1.00f);
-	colors[ImGuiCol_SliderGrab] = ImVec4(0.26f, 0.59f, 0.98f, 0.78f);
-	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_CheckMark] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f); // Blue checkmarks
+	// More muted, calmer color theme - lighter background
+	colors[ImGuiCol_WindowBg] = ImVec4(0.15f, 0.15f, 0.18f, 0.94f);  // Lighter background
+	colors[ImGuiCol_Header] = ImVec4(0.18f, 0.35f, 0.58f, 0.31f);    // More muted header
+	colors[ImGuiCol_HeaderHovered] = ImVec4(0.22f, 0.40f, 0.65f, 0.50f); // Softer highlight
+	colors[ImGuiCol_HeaderActive] = ImVec4(0.25f, 0.45f, 0.70f, 0.80f);
+	colors[ImGuiCol_Button] = ImVec4(0.18f, 0.35f, 0.58f, 0.40f);    // More muted buttons
+	colors[ImGuiCol_ButtonHovered] = ImVec4(0.22f, 0.40f, 0.65f, 0.60f); // Softer highlight
+	colors[ImGuiCol_ButtonActive] = ImVec4(0.25f, 0.45f, 0.70f, 0.80f);
+	colors[ImGuiCol_SliderGrab] = ImVec4(0.22f, 0.40f, 0.65f, 0.50f);
+	colors[ImGuiCol_SliderGrabActive] = ImVec4(0.25f, 0.45f, 0.70f, 0.80f);
+	colors[ImGuiCol_CheckMark] = ImVec4(0.25f, 0.45f, 0.70f, 0.90f); // Softer checkmarks
+	colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.12f, 0.94f);   // Match window background
+	colors[ImGuiCol_Border] = ImVec4(0.25f, 0.45f, 0.70f, 0.30f);    // Subtle borders
+	colors[ImGuiCol_FrameBg] = ImVec4(0.18f, 0.18f, 0.22f, 0.54f);   // Subtle frame background
+	colors[ImGuiCol_FrameBgHovered] = ImVec4(0.22f, 0.22f, 0.27f, 0.54f);
+	colors[ImGuiCol_FrameBgActive] = ImVec4(0.25f, 0.25f, 0.30f, 0.54f);
+	colors[ImGuiCol_TitleBg] = ImVec4(0.15f, 0.15f, 0.20f, 0.80f);   // Title background
+	colors[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.35f, 0.58f, 0.80f); // Active title
 }
 
 //--------------------------------------------------------------
@@ -1587,11 +1601,18 @@ void ofApp::drawGUI() {
 		showWindowResizeDialog();
 	}
 	
-	// Main tabbed interface window
-	ImGui::SetNextWindowPos(ImVec2(650, 10), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(390, 620), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("SonifyV1 Controls", nullptr, ImGuiWindowFlags_NoCollapse)) {
-		
+	// Main tabbed interface window - fixed position and size, non-floating
+	// Position exactly at the end of video area (640px) with full height
+	ImGui::SetNextWindowPos(ImVec2(640, 0));
+	ImGui::SetNextWindowSize(ImVec2(410, 640));
+	
+	// Remove window borders and make it fixed
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoMove | 
+								   ImGuiWindowFlags_NoResize | 
+								   ImGuiWindowFlags_NoCollapse | 
+								   ImGuiWindowFlags_NoTitleBar;
+	
+	if (ImGui::Begin("SonifyV1 Controls", nullptr, window_flags)) {
 		// Create tab bar
 		if (ImGui::BeginTabBar("ControlTabs")) {
 			
@@ -1604,6 +1625,12 @@ void ofApp::drawGUI() {
 			// MIDI Settings Tab  
 			if (ImGui::BeginTabItem("MIDI Settings")) {
 				drawMIDISettingsTab();
+				ImGui::EndTabItem();
+			}
+			
+			// Detection Classes Tab
+			if (ImGui::BeginTabItem("Detection Classes")) {
+				drawDetectionClassesTab();
 				ImGui::EndTabItem();
 			}
 			
@@ -1714,9 +1741,7 @@ void ofApp::drawMainControlsTab() {
 		} else if (cameraConnected) {
 			ImGui::Text("Camera connected");
 			if (ImGui::Button("Restart Camera")) {
-				camera.close();
-				camera.setup(640, 480, true);
-				cameraConnected = camera.isInitialized();
+				keyPressed('r');
 			}
 		} else {
 			ImGui::Text("No video source");
@@ -2318,6 +2343,26 @@ void ofApp::saveConfig() {
 	config["detection"]["showDetections"] = showDetections;
 	config["detection"]["showLines"] = showLines;
 	
+	// Save detection class selection
+	config["detection"]["preset"] = currentPreset;
+	config["detection"]["maxSelectedClasses"] = maxSelectedClasses;
+	
+	// Save selected class IDs
+	ofxJSONElement selectedClasses;
+	for (int i = 0; i < selectedClassIds.size(); i++) {
+		selectedClasses[i] = selectedClassIds[i];
+	}
+	config["detection"]["selectedClasses"] = selectedClasses;
+	
+	// Save category enabled flags
+	ofxJSONElement categories;
+	for (int i = 0; i < CATEGORY_COUNT; i++) {
+		// Convert bool to int/bool for JSON compatibility
+		bool isEnabled = categoryEnabled[i];
+		categories[i] = isEnabled;
+	}
+	config["detection"]["categories"] = categories;
+	
 	// Task 2.1: Enhanced tracking settings
 	config["tracking"]["showTrajectoryTrails"] = showTrajectoryTrails;
 	config["tracking"]["showVelocityVectors"] = showVelocityVectors;
@@ -2434,6 +2479,46 @@ void ofApp::loadConfig() {
 			
 			// Apply frame skip setting
 			detectionFrameSkip = frameSkipValue;
+			
+			// Load detection class selection
+			if (config["detection"]["preset"].isString()) {
+				currentPreset = config["detection"]["preset"].asString();
+			}
+			
+			if (config["detection"]["maxSelectedClasses"].isNumeric()) {
+				maxSelectedClasses = config["detection"]["maxSelectedClasses"].asInt();
+			}
+			
+			// Load selected class IDs
+			selectedClassIds.clear();
+			if (config["detection"]["selectedClasses"].isArray()) {
+				for (int i = 0; i < config["detection"]["selectedClasses"].size(); i++) {
+					if (config["detection"]["selectedClasses"][i].isNumeric()) {
+						selectedClassIds.push_back(config["detection"]["selectedClasses"][i].asInt());
+					}
+				}
+			}
+			
+			// Load category enabled flags
+			if (config["detection"]["categories"].isArray()) {
+				int arraySize = (int)config["detection"]["categories"].size();
+				int elementsToProcess = (arraySize < CATEGORY_COUNT) ? arraySize : CATEGORY_COUNT;
+				
+				for (int i = 0; i < elementsToProcess; i++) {
+					if (config["detection"]["categories"][i].isBool()) {
+						categoryEnabled[i] = config["detection"]["categories"][i].asBool();
+					}
+				}
+			}
+			
+			// If no classes loaded, apply default preset
+			if (selectedClassIds.empty()) {
+				currentPreset = "Vehicles Only";
+				applyPreset(currentPreset);
+			} else {
+				// Update enabled classes from loaded selection
+				updateEnabledClassesFromSelection();
+			}
 		}
 		
 		// Task 2.1: Enhanced tracking settings

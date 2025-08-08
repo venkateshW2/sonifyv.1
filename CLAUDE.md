@@ -7,11 +7,12 @@ Real-time highway sonification system built with openFrameworks. Converts visual
 
 ### Core System Architecture
 - **Video Input**: Camera + video file support with seamless switching
-- **Object Detection**: CoreML YOLOv8 (nano/medium/large) with M1 optimization
+- **Object Detection**: Complete CoreML YOLOv8 with ALL 80 COCO classes
+- **Multi-Class Detection**: Full support for vehicles, people, animals, and objects
 - **Interaction**: Line-based crossing zones with mouse drawing
 - **Vehicle Tracking**: Persistent IDs with trajectory analysis and velocity calculation
 - **Audio Communication**: OSC messaging to Max/MSP with line crossing events
-- **User Interface**: Professional ImGui interface with real-time controls
+- **User Interface**: Professional ImGui interface with organized tabbed layout
 - **Configuration**: JSON save/load system for complete application state
 
 ### ✅ Completed Features
@@ -23,13 +24,14 @@ Real-time highway sonification system built with openFrameworks. Converts visual
 - **File Dialog**: Native macOS file selection ('o' key)
 - **Transport Controls**: Play/pause (SPACE), seek (arrows), loop toggle ('l')
 
-#### CoreML Object Detection (Migrated from ONNX)
-- **✅ MIGRATION COMPLETE**: Successfully replaced ONNX with CoreML
+#### Complete Multi-Class Object Detection System
+- **✅ COMPLETE COCO-80 INTEGRATION**: All 80 classes from COCO dataset
 - **Model Support**: YOLOv8n, YOLOv8m, YOLOv8l with automatic fallback
 - **M1 Optimization**: Native Apple Neural Engine utilization
 - **Real-time Performance**: 60fps detection with proper preprocessing
-- **Vehicle Classification**: Cars, trucks, buses, motorcycles with confidence scoring
-- **Visual Feedback**: Professional bounding boxes with confidence bars
+- **✅ Four Category System**: Vehicles, People, Animals, Objects (70+ classes total)
+- **Advanced UI**: Organized detection classes with Street/Personal/Food/Sports/Furniture sections
+- **Visual Feedback**: Professional bounding boxes with confidence bars for ALL classes
 
 #### Interactive Line Drawing
 - **Line Creation**: Left-click start, right-click finish with visual feedback
@@ -53,10 +55,12 @@ Real-time highway sonification system built with openFrameworks. Converts visual
 - **Connection Management**: Robust OSC sender with error handling
 
 #### Professional GUI System
-- **ImGui Interface**: Modern, responsive interface with organized panels
+- **✅ Tabbed Interface**: Organized 1050x640 layout with Main Controls + Detection Classes + MIDI tabs
+- **✅ Complete Detection Classes**: Comprehensive UI for all COCO-80 classes with category organization
 - **Detection Controls**: Confidence threshold, frame skip, enable/disable
 - **Enhanced Tracking**: Trail visualization, velocity display, occlusion tracking
 - **OSC Settings**: Host/port configuration with real-time reconnection
+- **Video Controls**: Working GUI buttons for camera restart, video loading, source switching
 - **Performance Monitor**: FPS, detection count, system status
 - **Configuration Management**: Save/load with JSON persistence
 
@@ -66,6 +70,34 @@ Real-time highway sonification system built with openFrameworks. Converts visual
 - **Auto-save on Exit**: Automatic configuration preservation
 - **Default Settings**: Intelligent defaults for all parameters
 - **Line Persistence**: Save/restore drawn lines with colors and positions
+
+## ✅ Complete Object Detection Categories
+
+### Available Detection Classes (COCO-80 Dataset)
+
+#### **Vehicles** (8 classes)
+- bicycle, car, motorcycle, airplane, bus, train, truck, boat
+
+#### **People** (1 class)  
+- person
+
+#### **Animals** (10 classes)
+- bird, cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe
+
+#### **Objects** (61 classes organized by type)
+- **Street Objects**: traffic light, fire hydrant, stop sign, parking meter, bench
+- **Personal Items**: backpack, umbrella, handbag, tie, suitcase, bottle, wine glass, cup
+- **Food & Kitchen**: fork, knife, spoon, bowl, banana, apple, sandwich, orange, broccoli, carrot, hot dog, pizza, donut, cake
+- **Sports Equipment**: frisbee, skis, snowboard, sports ball, kite, baseball bat, baseball glove, skateboard, surfboard, tennis racket
+- **Furniture & Electronics**: chair, couch, potted plant, bed, dining table, toilet, tv, laptop, mouse, remote, keyboard, cell phone, microwave, oven, toaster, sink, refrigerator, book, clock, vase, scissors, teddy bear, hair drier, toothbrush
+
+### Detection Limitations & Future Enhancements
+- **COCO Limitations**: Trees, lampposts, and other infrastructure not included in COCO-80 dataset
+- **Custom Model Options**: For tree/infrastructure detection, would need custom-trained models like:
+  - Urban infrastructure models (streetlights, poles, signs)
+  - Vegetation detection models (trees, bushes, grass)
+  - Custom YOLO models trained on specific classes
+- **Current Workaround**: "potted plant" is closest available for vegetation detection
 
 ## Technical Architecture
 

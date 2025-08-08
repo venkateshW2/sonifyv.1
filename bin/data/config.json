@@ -1,8 +1,12 @@
 {
    "detection" : {
-      "confidenceThreshold" : 0.4300000071525574,
+      "categories" : [ false, false, false, true ],
+      "confidenceThreshold" : 0.2300000041723251,
       "enabled" : true,
       "frameSkip" : 1,
+      "maxSelectedClasses" : 8,
+      "preset" : "Custom",
+      "selectedClasses" : null,
       "showDetections" : true,
       "showLines" : true
    },
@@ -10,51 +14,15 @@
       "show" : true
    },
    "lines" : {
-      "count" : 2,
-      "line_0" : {
-         "colorB" : 128,
-         "colorG" : 0,
-         "colorR" : 128,
-         "durationType" : 0,
-         "endX" : 354,
-         "endY" : 204,
-         "fixedDuration" : 500,
-         "fixedVelocity" : 100,
-         "midiChannel" : 1,
-         "midiPortName" : "IAC Driver Bus 1",
-         "octave" : 4,
-         "randomizeNote" : true,
-         "scaleNoteIndex" : 0,
-         "startX" : 282,
-         "startY" : 204,
-         "velocityType" : 0
-      },
-      "line_1" : {
-         "colorB" : 128,
-         "colorG" : 0,
-         "colorR" : 128,
-         "durationType" : 0,
-         "endX" : 499,
-         "endY" : 136,
-         "fixedDuration" : 500,
-         "fixedVelocity" : 100,
-         "midiChannel" : 1,
-         "midiPortName" : "IAC Driver Bus 1",
-         "octave" : 4,
-         "randomizeNote" : true,
-         "scaleNoteIndex" : 0,
-         "startX" : 463,
-         "startY" : 137,
-         "velocityType" : 0
-      }
+      "count" : 0
    },
    "masterMusicalSystem" : {
       "rootNote" : 4,
-      "scale" : "Minor"
+      "scale" : "Chromatic"
    },
    "metadata" : {
       "application" : "SonifyV1",
-      "timestamp" : "2025-08-08-22-06-23-906",
+      "timestamp" : "2025-08-09-02-37-20-253",
       "version" : "1.0"
    },
    "osc" : {
@@ -72,12 +40,12 @@
       "trailFadeTime" : 0.800000011920929
    },
    "video" : {
-      "currentVideoPath" : "test_video.mp4",
+      "currentVideoPath" : "/Users/justmac/Documents/OF/of_v0.12.1_osx_release/apps/myApps/SonifyV1/bin/data/video/newTraffic Video 4K (1).mp4",
       "useVideoFile" : true
    },
    "window" : {
-      "originalHeight" : 648,
-      "originalWidth" : 1203
+      "originalHeight" : 641,
+      "originalWidth" : 1074
    }
 }
 

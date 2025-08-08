@@ -32,6 +32,30 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg) override;
 
 	private:
+		// Class detection category system
+		vector<bool> enabledClasses;       // Track enabled classes (80 elements for all YOLO classes)
+		vector<int> selectedClassIds;      // Currently selected class IDs (max 8)
+		string currentPreset;              // Current preset name ("Vehicles", "People & Animals", etc.)
+		int maxSelectedClasses;            // Maximum number of classes that can be selected (8)
+
+		// Category definitions
+		enum DetectionCategory {
+			CATEGORY_VEHICLES,
+			CATEGORY_PEOPLE,
+			CATEGORY_ANIMALS,
+			CATEGORY_OBJECTS,
+			CATEGORY_COUNT
+		};
+		vector<bool> categoryEnabled;      // Which main categories are enabled
+		
+		// Category helper methods
+		void initializeCategories();
+		void applyPreset(const string& presetName);
+		string getClassNameById(int classId);
+		DetectionCategory getCategoryForClass(int classId);
+		vector<int> getClassesInCategory(DetectionCategory category);
+		void updateEnabledClassesFromSelection();
+		
 		ofVideoGrabber camera;
 		ofVideoPlayer videoPlayer;
 		bool cameraConnected;
@@ -283,6 +307,7 @@ class ofApp : public ofBaseApp{
 		void drawGUI();
 		void drawMainControlsTab();
 		void drawMIDISettingsTab();
+		void drawDetectionClassesTab();  // New tab for class selection
 		
 		// Configuration methods
 		void saveConfig();

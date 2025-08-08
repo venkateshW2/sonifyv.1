@@ -19,9 +19,25 @@
     self = [super init];
     if (self) {
         self.coremlModel = nil;
-        // COCO class names - vehicles are classes 2,3,5,6,7
-        self.classNames = @[@"person", @"bicycle", @"car", @"motorcycle", @"airplane", 
-                           @"bus", @"train", @"truck", @"boat", @"traffic light"];
+        // Complete COCO 80-class dataset names
+        self.classNames = @[
+            @"person", @"bicycle", @"car", @"motorcycle", @"airplane",            // 0-4
+            @"bus", @"train", @"truck", @"boat", @"traffic light",               // 5-9
+            @"fire hydrant", @"stop sign", @"parking meter", @"bench", @"bird",  // 10-14
+            @"cat", @"dog", @"horse", @"sheep", @"cow",                          // 15-19
+            @"elephant", @"bear", @"zebra", @"giraffe", @"backpack",             // 20-24
+            @"umbrella", @"handbag", @"tie", @"suitcase", @"frisbee",            // 25-29
+            @"skis", @"snowboard", @"sports ball", @"kite", @"baseball bat",     // 30-34
+            @"baseball glove", @"skateboard", @"surfboard", @"tennis racket", @"bottle", // 35-39
+            @"wine glass", @"cup", @"fork", @"knife", @"spoon",                  // 40-44
+            @"bowl", @"banana", @"apple", @"sandwich", @"orange",                // 45-49
+            @"broccoli", @"carrot", @"hot dog", @"pizza", @"donut",              // 50-54
+            @"cake", @"chair", @"couch", @"potted plant", @"bed",                // 55-59
+            @"dining table", @"toilet", @"tv", @"laptop", @"mouse",              // 60-64
+            @"remote", @"keyboard", @"cell phone", @"microwave", @"oven",        // 65-69
+            @"toaster", @"sink", @"refrigerator", @"book", @"clock",             // 70-74
+            @"vase", @"scissors", @"teddy bear", @"hair drier", @"toothbrush"    // 75-79
+        ];
     }
     return self;
 }
@@ -157,13 +173,13 @@
         
         // Create MLFeatureProvider input with thresholds
         MLFeatureValue* imageFeature = [MLFeatureValue featureValueWithPixelBuffer:pixelBuffer];
-        MLFeatureValue* confThreshold = [MLFeatureValue featureValueWithDouble:0.25]; // Lower threshold
+        MLFeatureValue* confThresholdValue = [MLFeatureValue featureValueWithDouble:0.15]; // Lower threshold for debugging
         MLFeatureValue* iouThreshold = [MLFeatureValue featureValueWithDouble:0.7];
         
         NSError* inputError;
         MLDictionaryFeatureProvider* input = [[MLDictionaryFeatureProvider alloc] 
                                             initWithDictionary:@{@"image": imageFeature,
-                                                               @"confidenceThreshold": confThreshold,
+                                                               @"confidenceThreshold": confThresholdValue,
                                                                @"iouThreshold": iouThreshold} 
                                             error:&inputError];
         
@@ -237,8 +253,7 @@
     
     NSLog(@"Processing %d detections", numDetections);
     
-    // Vehicle class IDs in COCO dataset
-    NSSet* vehicleClasses = [NSSet setWithObjects:@2, @3, @5, @6, @7, nil]; // car, motorcycle, bus, train, truck
+    // Use configurable confidence threshold instead of hardcoded vehicle filter
     
     for (int i = 0; i < numDetections; i++) {
         // Extract box coordinates in center format (center_x, center_y, width, height)
@@ -262,8 +277,8 @@
             }
         }
         
-        // Filter for vehicles only and confidence threshold
-        if (maxConfidence > 0.3f && [vehicleClasses containsObject:@(bestClassId)]) {
+        // Apply low threshold for now - class filtering happens in ofApp
+        if (maxConfidence > 0.15f) {
             CoreMLDetection* detection = [[CoreMLDetection alloc] init];
             
             // Convert from normalized coordinates to 640x640 model space
