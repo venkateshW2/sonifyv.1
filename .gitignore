@@ -1,0 +1,66 @@
+# Build artifacts and compiled files
+/bin/*.app/
+/bin/SonifyV1.app/
+/obj/
+*.o
+*.d
+*.a
+*.dylib
+*.so
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Video files - too large for git
+/bin/data/video/*.mp4
+/bin/data/video/*.mov
+/bin/data/video/*.avi
+/bin/data/video/*.mkv
+/bin/data/video/*.m4v
+/bin/data/video/*.wmv
+
+# Large model files (keep structure, exclude models)
+/bin/data/models/*.mlpackage/
+/bin/data/models/*.onnx
+/bin/data/models/*.pt
+/bin/data/models/*.mlmodel
+
+# Keep required files
+!/bin/data/models/coco.names
+!/bin/data/models/README.md
+
+# IDE and development files
+.vscode/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*~
+
+# Runtime generated files
+sonifyv.1
+
+# Keep essential structure
+!/bin/data/
+!/bin/data/models/
+!/bin/data/video/
+!/bin/data/config.json
+
+# Keep documentation and source
+!/src/
+!/CLAUDE.md
+!/README.md
+!/config.make
+!/Makefile
+!/addons.make
