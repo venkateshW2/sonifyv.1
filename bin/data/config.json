@@ -1,12 +1,12 @@
 {
    "detection" : {
-      "categories" : [ false, false, false, true ],
+      "categories" : [ true, false, false, false ],
       "confidenceThreshold" : 0.2300000041723251,
       "enabled" : true,
       "frameSkip" : 1,
       "maxSelectedClasses" : 8,
       "preset" : "Custom",
-      "selectedClasses" : null,
+      "selectedClasses" : [ 1, 2, 3, 4, 5, 6, 7, 8 ],
       "showDetections" : true,
       "showLines" : true
    },
@@ -22,7 +22,7 @@
    },
    "metadata" : {
       "application" : "SonifyV1",
-      "timestamp" : "2025-08-09-02-37-20-253",
+      "timestamp" : "2025-08-09-02-47-39-499",
       "version" : "1.0"
    },
    "osc" : {
@@ -40,7 +40,7 @@
       "trailFadeTime" : 0.800000011920929
    },
    "video" : {
-      "currentVideoPath" : "/Users/justmac/Documents/OF/of_v0.12.1_osx_release/apps/myApps/SonifyV1/bin/data/video/newTraffic Video 4K (1).mp4",
+      "currentVideoPath" : "test_video.mp4",
       "useVideoFile" : true
    },
    "window" : {
