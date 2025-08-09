@@ -17,14 +17,14 @@ void ofApp::setup(){
 	currentVideoSource = CAMERA;  // Default to camera
 	
 	// Initialize IP camera configuration
-	ipCameraUrl = "http://192.168.29.151:8080/video";  // Your IP Webcam URL
+	ipCameraUrl = "http://localhost:8080/video";  // USB forwarded IP Webcam URL
 	ipCameraConnected = false;
-	connectionRetries = 0;
-	connectionTimeout = 5000;  // 5 seconds timeout
-	maxConnectionRetries = 3;
-	isConnecting = false;
-	lastConnectionAttempt = 0.0f;
-	connectionError = "";
+	// Simple IP camera setup with performance optimization
+	ipFrameReady = false;
+	lastFrameRequest = 0.0f;
+	frameRequestInterval = 0.5f;  // 2fps for much better performance
+	ipFrameSkip = 1;              // Process every frame requested
+	ipFrameCounter = 0;
 	
 	// Initialize line drawing system
 	isDrawingLine = false;
@@ -141,7 +141,7 @@ void ofApp::validateAndFixVideoSource() {
 			currentSourceWorking = (videoLoaded && videoPlayer.isLoaded());
 			break;
 		case IP_CAMERA:
-			currentSourceWorking = (ipCameraConnected && ipCameraPlayer.isLoaded());
+			currentSourceWorking = (ipCameraConnected && ipFrameReady);
 			break;
 	}
 	
@@ -183,7 +183,25 @@ void ofApp::update(){
 			}
 			break;
 		case IP_CAMERA:
-			updateIPCameraStatus();
+			// Request new frame with frame skipping for performance
+			if (ipCameraConnected && ofGetElapsedTimef() - lastFrameRequest > frameRequestInterval) {
+				ipFrameCounter++;
+				if (ipFrameCounter >= ipFrameSkip) {
+					// Load new frame via HTTP with proper handling
+					ofBuffer imageBuffer = ofLoadURL(ipCameraSnapshotUrl).data;
+					if (imageBuffer.size() > 0) {
+						ofImage newFrame;
+						if (newFrame.loadImage(imageBuffer)) {
+							// Resize to 320x240 for much better performance  
+							newFrame.resize(320, 240);
+							currentIPFrame = newFrame;
+							ipFrameReady = true;
+						}
+					}
+					ipFrameCounter = 0; // Reset counter
+				}
+				lastFrameRequest = ofGetElapsedTimef();
+			}
 			break;
 	}
 	
@@ -247,22 +265,18 @@ void ofApp::draw(){
 			}
 			break;
 		case IP_CAMERA:
-			if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
-				ipCameraPlayer.draw(0, 0, 640, 640);
+			if (ipCameraConnected && ipFrameReady && currentIPFrame.isAllocated()) {
+				currentIPFrame.draw(0, 0, 640, 640);
 				videoDrawn = true;
-			} else if (isConnecting) {
-				// Show connecting message
+			} else if (ipCameraConnected) {
+				// Show loading message
 				ofSetColor(255, 255, 255);
-				ofDrawBitmapString("Connecting to IP camera...", 20, 320);
-			} else if (!connectionError.empty()) {
-				// Show error message
-				ofSetColor(255, 0, 0);
-				ofDrawBitmapString("IP Camera Error: " + connectionError, 20, 320);
+				ofDrawBitmapString("Loading IP camera frame...", 20, 320);
 			} else {
-				// Show IP camera not connected message
+				// Show disconnected message
 				ofSetColor(255, 255, 0);
-				ofDrawBitmapString("IP Camera not connected. Press 'v' to switch to camera or video.", 20, 300);
-				ofDrawBitmapString("Or use GUI to connect to IP camera.", 20, 320);
+				ofDrawBitmapString("IP Camera not connected. Press 'v' to switch source.", 20, 300);
+				ofDrawBitmapString("Use GUI to connect to IP camera.", 20, 320);
 			}
 			break;
 	}
@@ -420,6 +434,25 @@ void ofApp::keyPressed(int key){
 				connectToIPCamera(ipCameraUrl);
 			}
 			ofLogNotice() << "Switched to IP camera mode";
+		}
+	}
+	
+	if (key == 'f' || key == 'F') {
+		// Force switch to FaceTime camera (bypass IP camera)
+		ofLogNotice() << "Forcing switch to FaceTime camera...";
+		currentVideoSource = CAMERA;
+		useVideoFile = false;
+		
+		// Restart camera if needed
+		camera.close();
+		camera.setDesiredFrameRate(30);
+		camera.setup(640, 480);
+		cameraConnected = camera.isInitialized();
+		
+		if (cameraConnected) {
+			ofLogNotice() << "FaceTime camera activated successfully";
+		} else {
+			ofLogNotice() << "Failed to connect to FaceTime camera";
 		}
 	}
 	
@@ -888,290 +921,59 @@ void ofApp::loadVideoFile(string path) {
 
 //--------------------------------------------------------------
 bool ofApp::connectToIPCamera(const string& url) {
-	if (isConnecting) {
-		return false;  // Already attempting connection
-	}
+	ofLogNotice() << "=== SIMPLE IP CAMERA CONNECTION ===";
+	ofLogNotice() << "Connecting to: " << url;
 	
-	ofLogNotice() << "=== IP CAMERA DEBUGGING ===";
-	ofLogNotice() << "Attempting to connect to IP camera: " << url;
-	
-	// Basic URL validation
-	if (!isValidIPCameraURL(url)) {
-		connectionError = "Invalid URL format";
-		ofLogError() << "Invalid IP camera URL: " << url;
-		return false;
-	}
-	
-	isConnecting = true;
-	connectionRetries = 0;
-	lastConnectionAttempt = ofGetElapsedTimef();
-	ipCameraUrl = url;
-	connectionError = "";
-	
-	// Stop current IP camera if running
+	// Stop current connection
 	if (ipCameraConnected) {
 		disconnectIPCamera();
 	}
 	
-	// Check if this is an RTSP stream
-	bool isRTSP = (url.find("rtsp://") == 0);
-	bool isHTTP = (url.find("http://") == 0 || url.find("https://") == 0);
-	
-	// DEBUG: Test network connectivity first
-	ofLogNotice() << "Testing network connectivity...";
-	
-	// Extract host and port from URL for connectivity test
-	string host, path;
-	int port = 80;
-	
-	if (isHTTP) {
-		// Parse HTTP URL
-		size_t protocol_end = url.find("://");
-		if (protocol_end != string::npos) {
-			string after_protocol = url.substr(protocol_end + 3);
-			size_t slash_pos = after_protocol.find('/');
-			string host_port = after_protocol.substr(0, slash_pos);
-			path = after_protocol.substr(slash_pos);
-			
-			size_t colon_pos = host_port.find(':');
-			if (colon_pos != string::npos) {
-				host = host_port.substr(0, colon_pos);
-				port = ofToInt(host_port.substr(colon_pos + 1));
-			} else {
-				host = host_port;
-				port = (url.find("https://") == 0) ? 443 : 80;
-			}
-		}
-	}
-	
-	ofLogNotice() << "Parsed URL - Host: " << host << ", Port: " << port << ", Path: " << path;
-	
-	// Test basic connectivity using system ping
-	string ping_cmd = "ping -c 1 -W 2000 " + host + " 2>/dev/null";
-	int ping_result = system(ping_cmd.c_str());
-	ofLogNotice() << "Network ping test result: " << (ping_result == 0 ? "SUCCESS" : "FAILED");
-	
-	// Test HTTP connectivity using curl
-	if (isHTTP) {
-		string curl_cmd = "curl -I -s -m 5 " + url + " | head -1";
-		FILE* curl_pipe = popen(curl_cmd.c_str(), "r");
-		if (curl_pipe) {
-			char buffer[256];
-			string response;
-			while (fgets(buffer, sizeof(buffer), curl_pipe) != NULL) {
-				response += buffer;
-			}
-			pclose(curl_pipe);
-			
-			ofLogNotice() << "HTTP response: " << response;
-			if (!response.empty()) {
-				ofLogNotice() << "HTTP connectivity: SUCCESS";
-			} else {
-				ofLogNotice() << "HTTP connectivity: FAILED";
-			}
-		}
-	}
-	
-	// DEBUG: Check if URL requires specific headers or user-agent
-	ofLogNotice() << "Testing with different user agents...";
-	
-	if (isRTSP) {
-		ofLogNotice() << "Detected RTSP stream, attempting connection...";
-		// RTSP streams are supported by AVFoundation on macOS
-		// ofVideoPlayer should handle RTSP URLs on macOS through AVFoundation
-	} else {
-		ofLogNotice() << "Detected HTTP/MJPEG stream, attempting connection...";
-	}
-	
-	// DEBUG: Try alternative URL formats for IP Webcam
-	vector<string> test_urls;
-	test_urls.push_back(url); // Original
-	
-	// Try common IP Webcam variations
+	// Set up URLs - convert streaming URL to snapshot URL
+	ipCameraUrl = url;
 	if (url.find("/video") != string::npos) {
-		test_urls.push_back(url + "?dummy=param.mjpg"); // Force MJPEG extension
-		test_urls.push_back(url.substr(0, url.find("/video")) + "/video.mjpg");
-		test_urls.push_back(url.substr(0, url.find("/video")) + "/mjpeg");
-		test_urls.push_back(url.substr(0, url.find("/video")) + "/mjpeg.cgi");
+		// Convert to optimized snapshot URL for better performance  
+		ipCameraSnapshotUrl = url.substr(0, url.find("/video")) + "/photo.jpg";
+	} else {
+		// Assume it's already a snapshot URL
+		ipCameraSnapshotUrl = url;
 	}
 	
-	// Add RTSP endpoints for IP Webcam (works without browser)
-	if (url.find("http://") == 0) {
-		// Convert HTTP to RTSP for IP Webcam - these work without browser
-		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_ulaw.sdp");
-		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_pcm.sdp");
-		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_opus.sdp");
-	}
+	ofLogNotice() << "Snapshot URL: " << ipCameraSnapshotUrl;
 	
-	// Always add HTTP endpoints
-	if (url.find("http://") == 0 || url.find("rtsp://") == 0) {
-		test_urls.push_back("http://" + host + ":" + ofToString(port) + "/video");
-		test_urls.push_back("http://" + host + ":" + ofToString(port) + "/videostream.cgi");
-	}
-	
+	// Test with a single frame load via HTTP
+	ofBuffer imageBuffer = ofLoadURL(ipCameraSnapshotUrl).data;
 	bool success = false;
-	string final_url;
-	
-	// Try each URL variant
-	for (const auto& test_url : test_urls) {
-		ofLogNotice() << "Testing URL: " << test_url;
-		
-		// Create temporary player for testing
-		ofVideoPlayer temp_player;
-		success = temp_player.load(test_url);
-		
-		if (success && temp_player.isLoaded()) {
-			final_url = test_url;
-			ofLogNotice() << "SUCCESS: Found working URL: " << final_url;
-			break;
-		} else {
-			ofLogNotice() << "FAILED: URL " << test_url << " did not load";
-			
-			// Get more detailed error information
-			ofLogNotice() << "Player loaded: " << (temp_player.isLoaded() ? "YES" : "NO");
-			ofLogNotice() << "Player width: " << temp_player.getWidth();
-			ofLogNotice() << "Player height: " << temp_player.getHeight();
-		}
-		
-		// Small delay between attempts
-		ofSleepMillis(500);
+	ofImage testFrame;
+	if (imageBuffer.size() > 0) {
+		success = testFrame.loadImage(imageBuffer);
 	}
 	
-	// If no variant worked, try the original URL with the main player
-	if (!success) {
-		final_url = url;
-		ofLogNotice() << "No URL variants worked, trying original with main player...";
-	}
-	
-	// Try to load the IP camera stream (works for both HTTP/MJPEG and RTSP on macOS)
-	ofLogNotice() << "Final attempt with URL: " << final_url;
-	success = ipCameraPlayer.load(final_url);
-	
-	if (success && ipCameraPlayer.isLoaded()) {
+	if (success && testFrame.isAllocated()) {
 		ipCameraConnected = true;
-		connectionError = "";
-		ofLogNotice() << "Successfully connected to IP camera: " << final_url;
-		
-		// Get video dimensions
-		int width = ipCameraPlayer.getWidth();
-		int height = ipCameraPlayer.getHeight();
-		ofLogNotice() << "Video dimensions: " << width << "x" << height;
-		
+		ipFrameReady = false;
+		lastFrameRequest = 0;
+		frameRequestInterval = 0.033f; // 30fps
+		currentIPFrame = testFrame;
+		ofLogNotice() << "SUCCESS: IP camera connected! Frame size: " << testFrame.getWidth() << "x" << testFrame.getHeight();
 		return true;
 	} else {
-		ipCameraConnected = false;
-		
-		// Enhanced debugging for MJPEG streams
-		ofLogError() << "=== CONNECTION FAILED ===";
-		ofLogError() << "Final URL: " << final_url;
-		ofLogError() << "Player loaded: " << (ipCameraPlayer.isLoaded() ? "YES" : "NO");
-		
-		// Try alternative approaches for MJPEG streams
-		ofLogNotice() << "Trying alternative MJPEG handling...";
-		
-		// Method 1: Try snapshot endpoint (single frame)
-		string snapshot_url = final_url.substr(0, final_url.find("/video")) + "/shot.jpg";
-		ofLogNotice() << "Testing snapshot URL: " << snapshot_url;
-		
-		ofVideoPlayer snapshot_player;
-		bool snapshot_success = snapshot_player.load(snapshot_url);
-		if (snapshot_success) {
-			ofLogNotice() << "Snapshot URL works! Using snapshot mode";
-			ipCameraUrl = snapshot_url;
-			success = ipCameraPlayer.load(snapshot_url);
-			if (success) {
-				ipCameraConnected = true;
-				connectionError = "Using snapshot mode (single frame)";
-				return true;
-			}
-		}
-		
-		// Method 2: Try different IP Webcam endpoints
-		vector<string> alternative_endpoints = {
-			"/videofeed",
-			"/video.mjpg",
-			"/mjpeg",
-			"/live",
-			"/stream"
-		};
-		
-		string base_url = "http://192.168.1.14:8080";
-		for (const auto& endpoint : alternative_endpoints) {
-			string alt_url = base_url + endpoint;
-			ofLogNotice() << "Testing alternative endpoint: " << alt_url;
-			
-			ofVideoPlayer alt_player;
-			if (alt_player.load(alt_url)) {
-				ofLogNotice() << "Found working endpoint: " << alt_url;
-				ipCameraUrl = alt_url;
-				success = ipCameraPlayer.load(alt_url);
-				if (success) {
-					ipCameraConnected = true;
-					connectionError = "";
-					return true;
-				}
-			}
-		}
-		
-		// Method 3: Use ofxHTTP for MJPEG streaming (fallback)
-		ofLogError() << "Standard endpoints failed, trying HTTP-based approach";
-		connectionError = "MJPEG format not supported by AVFoundation";
-		
-		// Provide specific guidance
-		ofLogError() << "=== SOLUTIONS ===";
-		ofLogError() << "1. Try DroidCam app instead (better compatibility)";
-		ofLogError() << "2. Use VLC to test: vlc http://192.168.1.14:8080/video";
-		ofLogError() << "3. Check IP Webcam settings for MJPEG format";
-		ofLogError() << "4. Try different Android IP camera app";
-		
+		ofLogError() << "FAILED: Could not load frame from " << ipCameraSnapshotUrl;
 		return false;
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::disconnectIPCamera() {
-	if (ipCameraConnected || ipCameraPlayer.isLoaded()) {
-		ipCameraPlayer.stop();
-		ipCameraPlayer.close();
+	if (ipCameraConnected) {
 		ipCameraConnected = false;
-		isConnecting = false;
-		connectionError = "";
+		ipFrameReady = false;
 		ofLogNotice() << "Disconnected from IP camera";
 	}
 }
 
 //--------------------------------------------------------------
-void ofApp::updateIPCameraStatus() {
-	// Handle connection timeouts and retries
-	if (isConnecting) {
-		float timeSinceAttempt = ofGetElapsedTimef() - lastConnectionAttempt;
-		if (timeSinceAttempt > (connectionTimeout / 1000.0f)) {
-			// Connection timeout
-			isConnecting = false;
-			connectionRetries++;
-			
-			if (connectionRetries < maxConnectionRetries) {
-				// Retry connection
-				retryIPCameraConnection();
-			} else {
-				connectionError = "Connection timeout after " + ofToString(maxConnectionRetries) + " attempts";
-				ofLogError() << connectionError;
-			}
-		}
-	}
-	
-	// Update IP camera player
-	if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
-		ipCameraPlayer.update();
-		
-		// Check if stream is still active
-		if (!ipCameraPlayer.isPlaying()) {
-			// Stream may have disconnected
-			ofLogWarning() << "IP camera stream appears to have stopped, attempting reconnection...";
-			retryIPCameraConnection();
-		}
-	}
-}
+// Removed old updateIPCameraStatus - using simple snapshot approach now
 
 //--------------------------------------------------------------
 bool ofApp::isValidIPCameraURL(const string& url) {
@@ -1188,13 +990,7 @@ bool ofApp::isValidIPCameraURL(const string& url) {
 }
 
 //--------------------------------------------------------------
-void ofApp::retryIPCameraConnection() {
-	if (!isConnecting && connectionRetries < maxConnectionRetries) {
-		ofLogNotice() << "Retrying IP camera connection (" << (connectionRetries + 1) << "/" << maxConnectionRetries << ")";
-		ofSleepMillis(2000);  // Wait 2 seconds between retries
-		connectToIPCamera(ipCameraUrl);
-	}
-}
+// Removed old retryIPCameraConnection - using simple approach now
 
 //--------------------------------------------------------------
 void ofApp::debugIPCameraConnection() {
@@ -1501,8 +1297,8 @@ void ofApp::processCoreMLDetection() {
 			}
 			break;
 		case IP_CAMERA:
-			if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
-				pixels = ipCameraPlayer.getPixels();
+			if (ipCameraConnected && ipFrameReady && currentIPFrame.isAllocated()) {
+				pixels = currentIPFrame.getPixels();
 			}
 			break;
 	}
@@ -2396,14 +2192,8 @@ void ofApp::drawMainControlsTab() {
 		if (ipCameraConnected) {
 			statusColor = ImVec4(0, 1, 0, 1);  // Green
 			statusText = "CONNECTED";
-		} else if (isConnecting) {
-			statusColor = ImVec4(1, 1, 0, 1);  // Yellow
-			statusText = "CONNECTING...";
-		} else if (!connectionError.empty()) {
-			statusColor = ImVec4(1, 0, 0, 1);  // Red
-			statusText = "ERROR: " + connectionError;
 		} else {
-			statusColor = ImVec4(0.5, 0.5, 0.5, 1);  // Gray
+			statusColor = ImVec4(1, 0, 0, 1);  // Red
 			statusText = "DISCONNECTED";
 		}
 		
@@ -2451,12 +2241,16 @@ void ofApp::drawMainControlsTab() {
 		}
 		
 		// Connection settings
-		ImGui::Text("Settings:");
-		int timeoutSeconds = connectionTimeout / 1000;
-		if (ImGui::SliderInt("Timeout (sec)", &timeoutSeconds, 1, 30)) {
-			connectionTimeout = timeoutSeconds * 1000;  // Convert to milliseconds
+		ImGui::Text("Simple IP Camera (snapshot mode):");
+		
+		// Performance settings
+		if (ImGui::SliderInt("Frame Skip (higher = less lag)", &ipFrameSkip, 1, 10)) {
+			// Update based on skip value: 1=10fps, 3=~3fps, 5=2fps, 10=1fps
 		}
-		ImGui::SliderInt("Max Retries", &maxConnectionRetries, 1, 10);
+		ImGui::SameLine(); ImGui::TextDisabled("(?)");
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Skip frames to reduce lag. Higher values = smoother but less frequent updates");
+		}
 		
 		// Instructions
 		ImGui::TextWrapped("Enter IP camera URL and click Test Connection. Use presets for common apps like IP Webcam.");
@@ -2565,6 +2359,25 @@ void ofApp::drawMainControlsTab() {
 	// Status Section
 	if (ImGui::CollapsingHeader("Status", ImGuiTreeNodeFlags_DefaultOpen)) {
 		ImGui::Text("FPS: %.1f", ofGetFrameRate());
+		
+		// Video Source Status with clear indicators
+		ImGui::Separator();
+		ImGui::Text("VIDEO SOURCE STATUS:");
+		
+		if (currentVideoSource == CAMERA && cameraConnected) {
+			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ FACETIME CAMERA (Press 'F')");
+		} else if (currentVideoSource == IP_CAMERA && ipCameraConnected) {
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "⚡ IP CAMERA via USB (Press 'I')");
+			ImGui::Text("  Frame Rate: %.1f fps", 1.0f / frameRequestInterval);
+			ImGui::Text("  Resolution: 320x240 (optimized)");
+		} else if (currentVideoSource == VIDEO_FILE && videoLoaded) {
+			ImGui::TextColored(ImVec4(0.0f, 0.8f, 1.0f, 1.0f), "📁 VIDEO FILE (Press 'O')");
+		} else {
+			ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NO SOURCE ACTIVE");
+		}
+		
+		ImGui::Separator();
+		ImGui::Text("Detection Stats:");
 		ImGui::Text("Detections: %d", (int)detections.size());
 		ImGui::Text("Tracked Vehicles: %d", (int)trackedVehicles.size());
 		ImGui::Text("Crossing Events: %d", (int)crossingEvents.size());
@@ -2594,11 +2407,11 @@ void ofApp::drawMainControlsTab() {
 				sourceColor = videoLoaded ? ImVec4(0, 1, 0, 1) : ImVec4(1, 0, 0, 1);
 				break;
 			case IP_CAMERA:
-				if (ipCameraConnected) {
-					sourceName = "IP Camera: CONNECTED";
+				if (ipCameraConnected && ipFrameReady) {
+					sourceName = "IP Camera: ACTIVE";
 					sourceColor = ImVec4(0, 1, 0, 1);
-				} else if (isConnecting) {
-					sourceName = "IP Camera: CONNECTING...";
+				} else if (ipCameraConnected) {
+					sourceName = "IP Camera: CONNECTED";
 					sourceColor = ImVec4(1, 1, 0, 1);
 				} else {
 					sourceName = "IP Camera: DISCONNECTED";
@@ -2638,10 +2451,11 @@ void ofApp::drawMainControlsTab() {
 	// Keyboard Shortcuts Section
 	if (ImGui::CollapsingHeader("Keyboard Shortcuts")) {
 		ImGui::Text("Video Sources:");
-		ImGui::Text("'o' - Open video file");
-		ImGui::Text("'v' - Cycle video sources (Camera->Video->IP Camera)");
-		ImGui::Text("'i' - Toggle IP camera mode");
-		ImGui::Text("'r' - Restart camera");
+		ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "'F' - FaceTime Camera (FAST, no lag)");
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "'I' - IP Camera via USB (Android)");
+		ImGui::Text("'O' - Open video file");
+		ImGui::Text("'V' - Cycle video sources");
+		ImGui::Text("'R' - Restart camera");
 		ImGui::Text("");
 		ImGui::Text("Detection & Lines:");
 		ImGui::Text("'d' - Toggle detection");
@@ -3230,8 +3044,7 @@ void ofApp::saveConfig() {
 	
 	// IP Camera settings
 	config["ipCamera"]["url"] = ipCameraUrl;
-	config["ipCamera"]["connectionTimeout"] = connectionTimeout;
-	config["ipCamera"]["maxConnectionRetries"] = maxConnectionRetries;
+	// Simple IP camera config (no timeout/retry settings needed)
 	
 	// Save lines
 	config["lines"]["count"] = (int)lines.size();
@@ -3420,11 +3233,9 @@ void ofApp::loadConfig() {
 			}
 		}
 		
-		// Load IP Camera settings
+		// Load IP Camera settings - simplified
 		if (config["ipCamera"].isObject()) {
 			ipCameraUrl = config["ipCamera"]["url"].asString();
-			connectionTimeout = config["ipCamera"]["connectionTimeout"].asInt();
-			maxConnectionRetries = config["ipCamera"]["maxConnectionRetries"].asInt();
 			
 			// If IP camera was the active source, try to reconnect (but don't block startup)
 			if (currentVideoSource == IP_CAMERA && !ipCameraUrl.empty()) {

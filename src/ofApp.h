@@ -69,15 +69,16 @@ class ofApp : public ofBaseApp{
 		bool videoPaused;
 		string currentVideoPath;
 		
-		// IP Camera configuration
+		// IP Camera configuration - SIMPLE SNAPSHOT APPROACH
 		string ipCameraUrl;
+		string ipCameraSnapshotUrl;  // For /photo.jpg endpoint
 		bool ipCameraConnected;
-		int connectionRetries;
-		int connectionTimeout;
-		int maxConnectionRetries;
-		bool isConnecting;
-		float lastConnectionAttempt;
-		string connectionError;
+		ofImage currentIPFrame;       // Current frame from IP camera
+		bool ipFrameReady;           // New frame available?
+		float lastFrameRequest;      // When did we last request a frame?
+		float frameRequestInterval;  // How often to request frames
+		int ipFrameSkip;             // Skip frames for performance
+		int ipFrameCounter;          // Counter for frame skipping
 		
 		// IP Camera debugging
 		void debugIPCameraConnection();
@@ -255,13 +256,10 @@ class ofApp : public ofBaseApp{
 		void loadVideoFile(string path);
 		void validateAndFixVideoSource();  // Ensure we always have a working video source
 		
-		// IP Camera methods
+		// IP Camera methods - simplified approach
 		bool connectToIPCamera(const string& url);
 		void disconnectIPCamera();
-		void updateIPCameraStatus();
-		void drawIPCameraControls();
 		bool isValidIPCameraURL(const string& url);
-		void retryIPCameraConnection();
 		
 		void drawLines();
 		ofColor getNextLineColor();

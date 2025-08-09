@@ -1,12 +1,12 @@
 {
    "detection" : {
-      "categories" : [ true, false, false, false ],
-      "confidenceThreshold" : 0.2300000041723251,
+      "categories" : [ false, false, false, false ],
+      "confidenceThreshold" : 0.7699999809265137,
       "enabled" : false,
       "frameSkip" : 1,
       "maxSelectedClasses" : 8,
-      "preset" : "Vehicles Only",
-      "selectedClasses" : [ 1, 2, 3, 5, 7 ],
+      "preset" : "Custom",
+      "selectedClasses" : null,
       "showDetections" : true,
       "showLines" : true
    },
@@ -14,12 +14,28 @@
       "show" : true
    },
    "ipCamera" : {
-      "connectionTimeout" : 5000,
-      "maxConnectionRetries" : 3,
-      "url" : "rtsp://192.168.1.14:8080/h264_ulaw.sdp"
+      "url" : "http://localhost:8080/video"
    },
    "lines" : {
-      "count" : 0
+      "count" : 1,
+      "line_0" : {
+         "colorB" : 128,
+         "colorG" : 0,
+         "colorR" : 255,
+         "durationType" : 0,
+         "endX" : 151,
+         "endY" : 267,
+         "fixedDuration" : 500,
+         "fixedVelocity" : 100,
+         "midiChannel" : 1,
+         "midiPortName" : "IAC Driver Bus 1",
+         "octave" : 4,
+         "randomizeNote" : true,
+         "scaleNoteIndex" : 0,
+         "startX" : 93,
+         "startY" : 269,
+         "velocityType" : 0
+      }
    },
    "masterMusicalSystem" : {
       "rootNote" : 4,
@@ -27,7 +43,7 @@
    },
    "metadata" : {
       "application" : "SonifyV1",
-      "timestamp" : "2025-08-09-20-00-57-537",
+      "timestamp" : "2025-08-09-22-13-01-675",
       "version" : "1.0"
    },
    "osc" : {
@@ -45,9 +61,9 @@
       "trailFadeTime" : 0.800000011920929
    },
    "video" : {
-      "currentVideoPath" : "test_video.mp4",
-      "currentVideoSource" : 0,
-      "useVideoFile" : false
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/People Crossing HD Video.mp4",
+      "currentVideoSource" : 1,
+      "useVideoFile" : true
    },
    "window" : {
       "originalHeight" : 640,
