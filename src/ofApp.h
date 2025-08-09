@@ -56,13 +56,28 @@ class ofApp : public ofBaseApp{
 		vector<int> getClassesInCategory(DetectionCategory category);
 		void updateEnabledClassesFromSelection();
 		
+		// Video Source Management
+		enum VideoSource { CAMERA, VIDEO_FILE, IP_CAMERA };
+		VideoSource currentVideoSource;
+		
 		ofVideoGrabber camera;
 		ofVideoPlayer videoPlayer;
+		ofVideoPlayer ipCameraPlayer;
 		bool cameraConnected;
-		bool useVideoFile;
+		bool useVideoFile;  // Kept for backward compatibility
 		bool videoLoaded;
 		bool videoPaused;
 		string currentVideoPath;
+		
+		// IP Camera configuration
+		string ipCameraUrl;
+		bool ipCameraConnected;
+		int connectionRetries;
+		int connectionTimeout;
+		int maxConnectionRetries;
+		bool isConnecting;
+		float lastConnectionAttempt;
+		string connectionError;
 		
 		// Task 3.1: Enhanced Line system with musical properties
 		struct MidiLine {
@@ -235,6 +250,16 @@ class ofApp : public ofBaseApp{
 		bool enableOcclusionTracking; // Track vehicles during brief occlusions
 		
 		void loadVideoFile(string path);
+		void validateAndFixVideoSource();  // Ensure we always have a working video source
+		
+		// IP Camera methods
+		bool connectToIPCamera(const string& url);
+		void disconnectIPCamera();
+		void updateIPCameraStatus();
+		void drawIPCameraControls();
+		bool isValidIPCameraURL(const string& url);
+		void retryIPCameraConnection();
+		
 		void drawLines();
 		ofColor getNextLineColor();
 		void loadCoreMLModel();

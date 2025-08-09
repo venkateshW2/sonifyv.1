@@ -14,6 +14,17 @@ void ofApp::setup(){
 	videoLoaded = false;
 	videoPaused = false;
 	currentVideoPath = "";
+	currentVideoSource = CAMERA;  // Default to camera
+	
+	// Initialize IP camera configuration
+	ipCameraUrl = "http://192.168.29.151:8080/video";  // Your IP Webcam URL
+	ipCameraConnected = false;
+	connectionRetries = 0;
+	connectionTimeout = 5000;  // 5 seconds timeout
+	maxConnectionRetries = 3;
+	isConnecting = false;
+	lastConnectionAttempt = 0.0f;
+	connectionError = "";
 	
 	// Initialize line drawing system
 	isDrawingLine = false;
@@ -74,9 +85,26 @@ void ofApp::setup(){
 		ofLogNotice() << "No test video found, will use camera. Press 'o' to open video file.";
 	}
 	
-	// Initialize camera at higher resolution for better detection
+	// Initialize camera at compatible resolution
 	camera.setDesiredFrameRate(30);
-	camera.setup(1280, 720);  // HD resolution for better detection
+	// Try different common resolutions for better compatibility
+	bool cameraSetup = false;
+	
+	// Try 640x480 first
+	if (camera.setup(640, 480)) {
+		cameraSetup = true;
+		ofLogNotice() << "Camera set to 640x480";
+	} 
+	// Fallback to lower resolution if needed
+	else if (camera.setup(320, 240)) {
+		cameraSetup = true;
+		ofLogNotice() << "Camera fallback to 320x240";
+	}
+	// Last resort - let camera choose
+	else if (camera.setup(0, 0)) {
+		cameraSetup = true;
+		ofLogNotice() << "Camera auto-resolution: " << camera.getWidth() << "x" << camera.getHeight();
+	}
 	
 	// Check if camera connected (keep fixed window size)
 	cameraConnected = camera.isInitialized();
@@ -95,13 +123,74 @@ void ofApp::setup(){
 	} else if (!cameraConnected) {
 		ofLogNotice() << "Camera not available, using video file only";
 	}
+	
+	// Final video source validation - ensure we start with a working source
+	validateAndFixVideoSource();
+}
+
+//--------------------------------------------------------------
+void ofApp::validateAndFixVideoSource() {
+	bool currentSourceWorking = false;
+	
+	// Check if current video source is actually working
+	switch (currentVideoSource) {
+		case CAMERA:
+			currentSourceWorking = (cameraConnected && camera.isInitialized());
+			break;
+		case VIDEO_FILE:
+			currentSourceWorking = (videoLoaded && videoPlayer.isLoaded());
+			break;
+		case IP_CAMERA:
+			currentSourceWorking = (ipCameraConnected && ipCameraPlayer.isLoaded());
+			break;
+	}
+	
+	// If current source isn't working, find a working one
+	if (!currentSourceWorking) {
+		ofLogNotice() << "Current video source not working, finding alternative...";
+		
+		// Try video file first (more reliable)
+		if (videoLoaded && videoPlayer.isLoaded()) {
+			currentVideoSource = VIDEO_FILE;
+			useVideoFile = true;
+			ofLogNotice() << "Switched to video file: " << currentVideoPath;
+		}
+		// Then try camera
+		else if (cameraConnected && camera.isInitialized()) {
+			currentVideoSource = CAMERA;
+			useVideoFile = false;
+			ofLogNotice() << "Switched to camera";
+		}
+		// Keep IP_CAMERA mode but user will see helpful message
+		else {
+			ofLogNotice() << "No working video sources available";
+		}
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+	// Update video sources based on current source
+	switch (currentVideoSource) {
+		case CAMERA:
+			if (cameraConnected) {
+				camera.update();
+			}
+			break;
+		case VIDEO_FILE:
+			if (videoLoaded) {
+				videoPlayer.update();
+			}
+			break;
+		case IP_CAMERA:
+			updateIPCameraStatus();
+			break;
+	}
+	
+	// Backward compatibility: also update based on useVideoFile flag
 	if (useVideoFile && videoLoaded) {
 		videoPlayer.update();
-	} else if (cameraConnected) {
+	} else if (cameraConnected && currentVideoSource == CAMERA) {
 		camera.update();
 	}
 	
@@ -133,11 +222,71 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+	// Clear background
+	ofSetColor(40, 40, 40);  // Dark gray background
+	ofFill();
+	ofDrawRectangle(0, 0, 640, 640);
+	
 	// Draw video source in left 640x640 area only
-	if (useVideoFile && videoLoaded) {
-		videoPlayer.draw(0, 0, 640, 640);
-	} else if (cameraConnected) {
-		camera.draw(0, 0, 640, 640);
+	ofSetColor(255, 255, 255);  // White color for video
+	
+	bool videoDrawn = false;
+	
+	// Primary video source drawing
+	switch (currentVideoSource) {
+		case CAMERA:
+			if (cameraConnected && camera.isInitialized()) {
+				camera.draw(0, 0, 640, 640);
+				videoDrawn = true;
+			}
+			break;
+		case VIDEO_FILE:
+			if (videoLoaded && videoPlayer.isLoaded()) {
+				videoPlayer.draw(0, 0, 640, 640);
+				videoDrawn = true;
+			}
+			break;
+		case IP_CAMERA:
+			if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
+				ipCameraPlayer.draw(0, 0, 640, 640);
+				videoDrawn = true;
+			} else if (isConnecting) {
+				// Show connecting message
+				ofSetColor(255, 255, 255);
+				ofDrawBitmapString("Connecting to IP camera...", 20, 320);
+			} else if (!connectionError.empty()) {
+				// Show error message
+				ofSetColor(255, 0, 0);
+				ofDrawBitmapString("IP Camera Error: " + connectionError, 20, 320);
+			} else {
+				// Show IP camera not connected message
+				ofSetColor(255, 255, 0);
+				ofDrawBitmapString("IP Camera not connected. Press 'v' to switch to camera or video.", 20, 300);
+				ofDrawBitmapString("Or use GUI to connect to IP camera.", 20, 320);
+			}
+			break;
+	}
+	
+	// Fallback: if no video drawn and we have other sources available
+	if (!videoDrawn) {
+		if (videoLoaded && videoPlayer.isLoaded()) {
+			ofSetColor(255, 255, 255);
+			videoPlayer.draw(0, 0, 640, 640);
+			videoDrawn = true;
+		} else if (cameraConnected && camera.isInitialized()) {
+			ofSetColor(255, 255, 255);
+			camera.draw(0, 0, 640, 640);
+			videoDrawn = true;
+		}
+	}
+	
+	// If still no video, show helpful message
+	if (!videoDrawn) {
+		ofSetColor(255, 255, 0);
+		ofDrawBitmapString("No video source available:", 20, 300);
+		ofDrawBitmapString("Camera: " + string(cameraConnected ? "Connected" : "Not connected"), 20, 320);
+		ofDrawBitmapString("Video: " + string(videoLoaded ? "Loaded" : "Not loaded"), 20, 340);
+		ofDrawBitmapString("Press 'v' to switch sources or 'o' to load video", 20, 360);
 	}
 	
 	// Draw lines over video (only if enabled)
@@ -190,7 +339,7 @@ void ofApp::keyPressed(int key){
 		// Restart camera
 		camera.close();
 		camera.setDesiredFrameRate(30);
-		camera.setup(1280, 720);  // HD resolution
+		camera.setup(640, 480);  // VGA resolution for compatibility
 		cameraConnected = camera.isInitialized();
 		
 		// Window size remains fixed at 640x640 regardless of camera restart
@@ -203,19 +352,74 @@ void ofApp::keyPressed(int key){
 	}
 	
 	if (key == 'v' || key == 'V') {
-		// Toggle between video file and camera
-		if (videoLoaded && cameraConnected) {
-			useVideoFile = !useVideoFile;
-			string newSource = useVideoFile ? "video file" : "camera";
-			ofLogNotice() << "Switched to " << newSource;
-		} else if (videoLoaded && !useVideoFile) {
-			useVideoFile = true;
-			ofLogNotice() << "Switched to video file (camera not available)";
-		} else if (cameraConnected && useVideoFile) {
-			useVideoFile = false;
-			ofLogNotice() << "Switched to camera (video not available)";
+		// Cycle through video sources: Camera -> Video File -> IP Camera -> Camera...
+		VideoSource nextSource;
+		switch (currentVideoSource) {
+			case CAMERA:
+				if (videoLoaded) {
+					nextSource = VIDEO_FILE;
+				} else if (ipCameraConnected) {
+					nextSource = IP_CAMERA;
+				} else {
+					nextSource = CAMERA;  // Stay on camera
+				}
+				break;
+			case VIDEO_FILE:
+				if (ipCameraConnected) {
+					nextSource = IP_CAMERA;
+				} else if (cameraConnected) {
+					nextSource = CAMERA;
+				} else {
+					nextSource = VIDEO_FILE;  // Stay on video
+				}
+				break;
+			case IP_CAMERA:
+				if (cameraConnected) {
+					nextSource = CAMERA;
+				} else if (videoLoaded) {
+					nextSource = VIDEO_FILE;
+				} else {
+					nextSource = IP_CAMERA;  // Stay on IP camera
+				}
+				break;
+		}
+		
+		currentVideoSource = nextSource;
+		
+		// Update backward compatibility flag
+		useVideoFile = (currentVideoSource == VIDEO_FILE);
+		
+		string sourceName;
+		switch (currentVideoSource) {
+			case CAMERA: sourceName = "camera"; break;
+			case VIDEO_FILE: sourceName = "video file"; break;
+			case IP_CAMERA: sourceName = "IP camera"; break;
+		}
+		ofLogNotice() << "Switched to " << sourceName;
+	}
+	
+	if (key == 'i' || key == 'I') {
+		// Toggle IP camera mode
+		if (currentVideoSource == IP_CAMERA) {
+			// Switch away from IP camera
+			if (cameraConnected) {
+				currentVideoSource = CAMERA;
+				useVideoFile = false;
+				ofLogNotice() << "Switched to camera";
+			} else if (videoLoaded) {
+				currentVideoSource = VIDEO_FILE;
+				useVideoFile = true;
+				ofLogNotice() << "Switched to video file";
+			}
 		} else {
-			ofLogWarning() << "Cannot toggle - only one source available";
+			// Switch to IP camera
+			currentVideoSource = IP_CAMERA;
+			useVideoFile = false;
+			if (!ipCameraConnected && !ipCameraUrl.empty()) {
+				// Try to connect automatically
+				connectToIPCamera(ipCameraUrl);
+			}
+			ofLogNotice() << "Switched to IP camera mode";
 		}
 	}
 	
@@ -677,6 +881,150 @@ void ofApp::loadVideoFile(string path) {
 	}
 }
 
+//--------------------------------------------------------------
+bool ofApp::connectToIPCamera(const string& url) {
+	if (isConnecting) {
+		return false;  // Already attempting connection
+	}
+	
+	ofLogNotice() << "Attempting to connect to IP camera: " << url;
+	
+	// Basic URL validation
+	if (!isValidIPCameraURL(url)) {
+		connectionError = "Invalid URL format";
+		ofLogError() << "Invalid IP camera URL: " << url;
+		return false;
+	}
+	
+	isConnecting = true;
+	connectionRetries = 0;
+	lastConnectionAttempt = ofGetElapsedTimef();
+	ipCameraUrl = url;
+	connectionError = "";
+	
+	// Stop current IP camera if running
+	if (ipCameraConnected) {
+		disconnectIPCamera();
+	}
+	
+	// Check if this is an RTSP stream
+	bool isRTSP = (url.find("rtsp://") == 0);
+	
+	if (isRTSP) {
+		ofLogNotice() << "Detected RTSP stream, attempting connection...";
+		// RTSP streams are supported by AVFoundation on macOS
+		// ofVideoPlayer should handle RTSP URLs on macOS through AVFoundation
+	} else {
+		ofLogNotice() << "Detected HTTP/MJPEG stream, attempting connection...";
+	}
+	
+	// Try to load the IP camera stream (works for both HTTP/MJPEG and RTSP on macOS)
+	bool success = ipCameraPlayer.load(url);
+	
+	if (success && ipCameraPlayer.isLoaded()) {
+		ipCameraConnected = true;
+		isConnecting = false;
+		currentVideoSource = IP_CAMERA;
+		
+		// Configure the player
+		ipCameraPlayer.setLoopState(OF_LOOP_NONE);  // Streaming doesn't loop
+		ipCameraPlayer.setVolume(0.0f);  // Mute audio
+		ipCameraPlayer.play();
+		
+		string streamType = isRTSP ? "RTSP" : "HTTP/MJPEG";
+		ofLogNotice() << "Successfully connected to IP camera (" << streamType << ")";
+		ofLogNotice() << "Stream size: " << ipCameraPlayer.getWidth() << "x" << ipCameraPlayer.getHeight();
+		return true;
+	} else {
+		isConnecting = false;
+		ipCameraConnected = false;
+		string streamType = isRTSP ? "RTSP" : "HTTP/MJPEG";
+		connectionError = "Failed to connect to " + streamType + " stream";
+		
+		if (isRTSP) {
+			ofLogError() << "Failed to connect to RTSP stream: " << url;
+			ofLogError() << "Make sure the RTSP server is running and accessible";
+		} else {
+			ofLogError() << "Failed to connect to HTTP/MJPEG stream: " << url;
+		}
+		return false;
+	}
+}
+
+//--------------------------------------------------------------
+void ofApp::disconnectIPCamera() {
+	if (ipCameraConnected || ipCameraPlayer.isLoaded()) {
+		ipCameraPlayer.stop();
+		ipCameraPlayer.close();
+		ipCameraConnected = false;
+		isConnecting = false;
+		connectionError = "";
+		ofLogNotice() << "Disconnected from IP camera";
+	}
+}
+
+//--------------------------------------------------------------
+void ofApp::updateIPCameraStatus() {
+	// Handle connection timeouts and retries
+	if (isConnecting) {
+		float timeSinceAttempt = ofGetElapsedTimef() - lastConnectionAttempt;
+		if (timeSinceAttempt > (connectionTimeout / 1000.0f)) {
+			// Connection timeout
+			isConnecting = false;
+			connectionRetries++;
+			
+			if (connectionRetries < maxConnectionRetries) {
+				// Retry connection
+				retryIPCameraConnection();
+			} else {
+				connectionError = "Connection timeout after " + ofToString(maxConnectionRetries) + " attempts";
+				ofLogError() << connectionError;
+			}
+		}
+	}
+	
+	// Update IP camera player
+	if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
+		ipCameraPlayer.update();
+		
+		// Check if stream is still active
+		if (!ipCameraPlayer.isPlaying()) {
+			// Stream may have disconnected
+			ofLogWarning() << "IP camera stream appears to have stopped, attempting reconnection...";
+			retryIPCameraConnection();
+		}
+	}
+}
+
+//--------------------------------------------------------------
+bool ofApp::isValidIPCameraURL(const string& url) {
+	// Basic URL validation - check for http://, https://, or rtsp:// and basic format
+	if (url.empty()) return false;
+	
+	// Check for supported protocols
+	bool hasProtocol = (url.find("http://") == 0 || url.find("https://") == 0 || url.find("rtsp://") == 0);
+	if (!hasProtocol) return false;
+	
+	// Check for at least one dot (IP or domain)
+	if (url.find('.') == string::npos) return false;
+	
+	// Check for port number (should have colon after IP)
+	size_t protocolEnd = url.find("://") + 3;
+	string afterProtocol = url.substr(protocolEnd);
+	if (afterProtocol.find(':') == string::npos) return false;
+	
+	return true;
+}
+
+//--------------------------------------------------------------
+void ofApp::retryIPCameraConnection() {
+	if (!isConnecting && connectionRetries < maxConnectionRetries) {
+		ofLogNotice() << "Retrying IP camera connection (" << (connectionRetries + 1) << "/" << maxConnectionRetries << ")";
+		ofSleepMillis(2000);  // Wait 2 seconds between retries
+		connectToIPCamera(ipCameraUrl);
+	}
+}
+
 
 //--------------------------------------------------------------
 void ofApp::drawLines() {
@@ -835,12 +1183,32 @@ void ofApp::processCoreMLDetection() {
 	
 	// Get current frame (don't clear detections until we get new results)
 	ofPixels pixels;
-	if (useVideoFile && videoLoaded) {
-		pixels = videoPlayer.getPixels();
-	} else if (cameraConnected) {
-		pixels = camera.getPixels();
-	} else {
-		return;
+	
+	switch (currentVideoSource) {
+		case CAMERA:
+			if (cameraConnected) {
+				pixels = camera.getPixels();
+			}
+			break;
+		case VIDEO_FILE:
+			if (videoLoaded) {
+				pixels = videoPlayer.getPixels();
+			}
+			break;
+		case IP_CAMERA:
+			if (ipCameraConnected && ipCameraPlayer.isLoaded()) {
+				pixels = ipCameraPlayer.getPixels();
+			}
+			break;
+	}
+	
+	// Backward compatibility fallback
+	if (pixels.size() == 0) {
+		if (useVideoFile && videoLoaded) {
+			pixels = videoPlayer.getPixels();
+		} else if (cameraConnected) {
+			pixels = camera.getPixels();
+		}
 	}
 	
 	if (pixels.size() == 0) {
@@ -1704,6 +2072,82 @@ void ofApp::drawMainControlsTab() {
 		ImGui::TextWrapped("Drag line endpoints to move lines");
 	}
 	
+	// IP Camera Controls Section
+	if (ImGui::CollapsingHeader("IP Camera")) {
+		// URL input field
+		static char urlBuffer[512];
+		if (strlen(urlBuffer) == 0) {
+			strcpy(urlBuffer, ipCameraUrl.c_str());
+		}
+		
+		ImGui::Text("IP Camera URL:");
+		if (ImGui::InputText("##ipurl", urlBuffer, sizeof(urlBuffer))) {
+			ipCameraUrl = string(urlBuffer);
+		}
+		
+		// Connection status indicator (LED style)
+		ImVec4 statusColor;
+		string statusText;
+		if (ipCameraConnected) {
+			statusColor = ImVec4(0, 1, 0, 1);  // Green
+			statusText = "CONNECTED";
+		} else if (isConnecting) {
+			statusColor = ImVec4(1, 1, 0, 1);  // Yellow
+			statusText = "CONNECTING...";
+		} else if (!connectionError.empty()) {
+			statusColor = ImVec4(1, 0, 0, 1);  // Red
+			statusText = "ERROR: " + connectionError;
+		} else {
+			statusColor = ImVec4(0.5, 0.5, 0.5, 1);  // Gray
+			statusText = "DISCONNECTED";
+		}
+		
+		ImGui::TextColored(statusColor, statusText.c_str());
+		
+		// Control buttons
+		if (ImGui::Button("Test Connection")) {
+			connectToIPCamera(ipCameraUrl);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Disconnect") && ipCameraConnected) {
+			disconnectIPCamera();
+		}
+		
+		// Preset buttons for common IP camera apps
+		ImGui::Text("HTTP/MJPEG Presets:");
+		if (ImGui::Button("Your IP Webcam")) {
+			strcpy(urlBuffer, "http://192.168.29.151:8080/video");
+			ipCameraUrl = string(urlBuffer);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Generic (8080)")) {
+			strcpy(urlBuffer, "http://192.168.1.100:8080/video");
+			ipCameraUrl = string(urlBuffer);
+		}
+		
+		ImGui::Text("RTSP Presets:");
+		if (ImGui::Button("Your IP Webcam RTSP")) {
+			strcpy(urlBuffer, "rtsp://192.168.29.151:8080/h264_ulaw.sdp");
+			ipCameraUrl = string(urlBuffer);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Generic RTSP")) {
+			strcpy(urlBuffer, "rtsp://192.168.1.100:554/live");
+			ipCameraUrl = string(urlBuffer);
+		}
+		
+		// Connection settings
+		ImGui::Text("Settings:");
+		int timeoutSeconds = connectionTimeout / 1000;
+		if (ImGui::SliderInt("Timeout (sec)", &timeoutSeconds, 1, 30)) {
+			connectionTimeout = timeoutSeconds * 1000;  // Convert to milliseconds
+		}
+		ImGui::SliderInt("Max Retries", &maxConnectionRetries, 1, 10);
+		
+		// Instructions
+		ImGui::TextWrapped("Enter IP camera URL and click Test Connection. Use presets for common apps like IP Webcam.");
+	}
+	
 	// Video Controls Section
 	if (ImGui::CollapsingHeader("Video Controls")) {
 		if (useVideoFile && videoLoaded) {
@@ -1775,6 +2219,33 @@ void ofApp::drawMainControlsTab() {
 		} else {
 			ImGui::TextColored(ImVec4(1, 0.5, 0, 1), "OSC: DISABLED");
 		}
+		
+		// Video source status
+		string sourceName;
+		ImVec4 sourceColor;
+		switch (currentVideoSource) {
+			case CAMERA:
+				sourceName = cameraConnected ? "Camera: CONNECTED" : "Camera: NOT AVAILABLE";
+				sourceColor = cameraConnected ? ImVec4(0, 1, 0, 1) : ImVec4(1, 0, 0, 1);
+				break;
+			case VIDEO_FILE:
+				sourceName = videoLoaded ? "Video: LOADED" : "Video: NOT LOADED";
+				sourceColor = videoLoaded ? ImVec4(0, 1, 0, 1) : ImVec4(1, 0, 0, 1);
+				break;
+			case IP_CAMERA:
+				if (ipCameraConnected) {
+					sourceName = "IP Camera: CONNECTED";
+					sourceColor = ImVec4(0, 1, 0, 1);
+				} else if (isConnecting) {
+					sourceName = "IP Camera: CONNECTING...";
+					sourceColor = ImVec4(1, 1, 0, 1);
+				} else {
+					sourceName = "IP Camera: DISCONNECTED";
+					sourceColor = ImVec4(1, 0, 0, 1);
+				}
+				break;
+		}
+		ImGui::TextColored(sourceColor, sourceName.c_str());
 	}
 	
 	// Configuration Section
@@ -1805,18 +2276,26 @@ void ofApp::drawMainControlsTab() {
 	
 	// Keyboard Shortcuts Section
 	if (ImGui::CollapsingHeader("Keyboard Shortcuts")) {
-		ImGui::Text("'d' - Toggle detection");
+		ImGui::Text("Video Sources:");
 		ImGui::Text("'o' - Open video file");
-		ImGui::Text("'v' - Toggle camera/video");
+		ImGui::Text("'v' - Cycle video sources (Camera->Video->IP Camera)");
+		ImGui::Text("'i' - Toggle IP camera mode");
 		ImGui::Text("'r' - Restart camera");
+		ImGui::Text("");
+		ImGui::Text("Detection & Lines:");
+		ImGui::Text("'d' - Toggle detection");
 		ImGui::Text("'c' - Clear all lines");
-		ImGui::Text("'t' - Send test MIDI note");
-		ImGui::Text("'g' - Toggle this GUI");
+		ImGui::Text("ESC - Deselect all lines");
+		ImGui::Text("Delete/Backspace - Delete selected line");
+		ImGui::Text("");
+		ImGui::Text("Video Playback:");
 		ImGui::Text("SPACE - Play/pause video");
 		ImGui::Text("LEFT/RIGHT - Seek video");
 		ImGui::Text("'l' - Toggle video loop");
-		ImGui::Text("ESC - Deselect all lines");
-		ImGui::Text("Delete/Backspace - Delete selected line");
+		ImGui::Text("");
+		ImGui::Text("System:");
+		ImGui::Text("'t' - Send test MIDI note");
+		ImGui::Text("'g' - Toggle this GUI");
 	}
 	
 	// Live Tracking Data (at bottom to avoid disrupting other controls)
@@ -2385,6 +2864,12 @@ void ofApp::saveConfig() {
 	// Video settings
 	config["video"]["useVideoFile"] = useVideoFile;
 	config["video"]["currentVideoPath"] = currentVideoPath;
+	config["video"]["currentVideoSource"] = (int)currentVideoSource;
+	
+	// IP Camera settings
+	config["ipCamera"]["url"] = ipCameraUrl;
+	config["ipCamera"]["connectionTimeout"] = connectionTimeout;
+	config["ipCamera"]["maxConnectionRetries"] = maxConnectionRetries;
 	
 	// Save lines
 	config["lines"]["count"] = (int)lines.size();
@@ -2558,9 +3043,42 @@ void ofApp::loadConfig() {
 			useVideoFile = config["video"]["useVideoFile"].asBool();
 			currentVideoPath = config["video"]["currentVideoPath"].asString();
 			
+			// Load current video source (with fallback for older configs)
+			if (config["video"]["currentVideoSource"].isNumeric()) {
+				int sourceValue = config["video"]["currentVideoSource"].asInt();
+				currentVideoSource = static_cast<VideoSource>(sourceValue);
+			} else {
+				// Fallback for older configs without currentVideoSource
+				currentVideoSource = useVideoFile ? VIDEO_FILE : CAMERA;
+			}
+			
 			// Try to load the saved video file
 			if (useVideoFile && !currentVideoPath.empty() && ofFile::doesFileExist(currentVideoPath)) {
 				loadVideoFile(currentVideoPath);
+			}
+		}
+		
+		// Load IP Camera settings
+		if (config["ipCamera"].isObject()) {
+			ipCameraUrl = config["ipCamera"]["url"].asString();
+			connectionTimeout = config["ipCamera"]["connectionTimeout"].asInt();
+			maxConnectionRetries = config["ipCamera"]["maxConnectionRetries"].asInt();
+			
+			// If IP camera was the active source, try to reconnect (but don't block startup)
+			if (currentVideoSource == IP_CAMERA && !ipCameraUrl.empty()) {
+				ofLogNotice() << "IP camera was active source, but not connected.";
+				// Auto-fallback to available video sources instead of staying on IP camera
+				if (videoLoaded && videoPlayer.isLoaded()) {
+					currentVideoSource = VIDEO_FILE;
+					useVideoFile = true;
+					ofLogNotice() << "Auto-switched to video file: " << currentVideoPath;
+				} else if (cameraConnected && camera.isInitialized()) {
+					currentVideoSource = CAMERA;
+					useVideoFile = false;
+					ofLogNotice() << "Auto-switched to camera";
+				} else {
+					ofLogNotice() << "No video sources available - staying on IP camera mode";
+				}
 			}
 		}
 		
