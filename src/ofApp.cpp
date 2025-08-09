@@ -1005,14 +1005,8 @@ bool ofApp::isValidIPCameraURL(const string& url) {
 	bool hasProtocol = (url.find("http://") == 0 || url.find("https://") == 0 || url.find("rtsp://") == 0);
 	if (!hasProtocol) return false;
 	
-	// Check for at least one dot (IP or domain)
-	if (url.find('.') == string::npos) return false;
-	
-	// Check for port number (should have colon after IP)
-	size_t protocolEnd = url.find("://") + 3;
-	string afterProtocol = url.substr(protocolEnd);
-	if (afterProtocol.find(':') == string::npos) return false;
-	
+	// Allow IP addresses (192.168.x.x) and domain names
+	// Let AVFoundation handle the actual connection validation
 	return true;
 }
 
