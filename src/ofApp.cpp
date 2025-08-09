@@ -1057,6 +1057,7 @@ bool ofApp::connectToIPCamera(const string& url) {
 		int height = ipCameraPlayer.getHeight();
 		ofLogNotice() << "Video dimensions: " << width << "x" << height;
 		
+		return true;
 	} else {
 		ipCameraConnected = false;
 		
@@ -1081,7 +1082,7 @@ bool ofApp::connectToIPCamera(const string& url) {
 			if (success) {
 				ipCameraConnected = true;
 				connectionError = "Using snapshot mode (single frame)";
-				return;
+				return true;
 			}
 		}
 		
@@ -1107,7 +1108,7 @@ bool ofApp::connectToIPCamera(const string& url) {
 				if (success) {
 					ipCameraConnected = true;
 					connectionError = "";
-					return;
+					return true;
 				}
 			}
 		}
@@ -1122,7 +1123,6 @@ bool ofApp::connectToIPCamera(const string& url) {
 		ofLogError() << "2. Use VLC to test: vlc http://192.168.1.14:8080/video";
 		ofLogError() << "3. Check IP Webcam settings for MJPEG format";
 		ofLogError() << "4. Try different Android IP camera app";
-	}
 		
 		return false;
 	}
@@ -2529,11 +2529,36 @@ void ofApp::drawMainControlsTab() {
 		
 		if (ImGui::Button("Load Video File")) {
 			// Trigger file dialog (existing 'o' key functionality)
+			ofLogNotice() << "GUI: Load Video File button pressed";
 			keyPressed('o');
 		}
 		
-		if (ImGui::Button("Toggle Camera/Video")) {
+		ImGui::SameLine();
+		if (ImGui::Button("Toggle Source")) {
+			// Cycle through video sources
+			ofLogNotice() << "GUI: Toggle Source button pressed";
 			keyPressed('v');
+		}
+		
+		// Additional direct controls
+		ImGui::Text("Direct Controls:");
+		if (ImGui::Button("Switch to Camera")) {
+			ofLogNotice() << "GUI: Switch to Camera button pressed";
+			if (cameraConnected) {
+				currentVideoSource = CAMERA;
+				useVideoFile = false;
+				ofLogNotice() << "Switched to camera";
+			} else {
+				ofLogNotice() << "Camera not connected";
+			}
+		}
+		
+		ImGui::SameLine();
+		if (ImGui::Button("Switch to Video") && videoLoaded) {
+			ofLogNotice() << "GUI: Switch to Video button pressed";
+			currentVideoSource = VIDEO_FILE;
+			useVideoFile = true;
+			ofLogNotice() << "Switched to video file";
 		}
 	}
 	
