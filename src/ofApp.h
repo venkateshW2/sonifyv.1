@@ -79,6 +79,9 @@ class ofApp : public ofBaseApp{
 		float lastConnectionAttempt;
 		string connectionError;
 		
+		// IP Camera debugging
+		void debugIPCameraConnection();
+		
 		// Task 3.1: Enhanced Line system with musical properties
 		struct MidiLine {
 			// Visual properties

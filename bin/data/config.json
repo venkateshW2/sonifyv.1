@@ -1,12 +1,12 @@
 {
    "detection" : {
-      "categories" : [ false, true, false, false ],
+      "categories" : [ true, false, false, false ],
       "confidenceThreshold" : 0.2300000041723251,
-      "enabled" : true,
+      "enabled" : false,
       "frameSkip" : 1,
       "maxSelectedClasses" : 8,
-      "preset" : "Custom",
-      "selectedClasses" : [ 0 ],
+      "preset" : "Vehicles Only",
+      "selectedClasses" : [ 1, 2, 3, 5, 7 ],
       "showDetections" : true,
       "showLines" : true
    },
@@ -16,7 +16,7 @@
    "ipCamera" : {
       "connectionTimeout" : 5000,
       "maxConnectionRetries" : 3,
-      "url" : "rtsp://192.168.1.100:554/live"
+      "url" : "rtsp://192.168.1.14:8080/h264_ulaw.sdp"
    },
    "lines" : {
       "count" : 0
@@ -27,7 +27,7 @@
    },
    "metadata" : {
       "application" : "SonifyV1",
-      "timestamp" : "2025-08-09-16-49-35-067",
+      "timestamp" : "2025-08-09-20-00-57-537",
       "version" : "1.0"
    },
    "osc" : {
@@ -45,9 +45,9 @@
       "trailFadeTime" : 0.800000011920929
    },
    "video" : {
-      "currentVideoPath" : "/Users/justmac/Documents/OF/of_v0.12.1_osx_release/apps/myApps/SonifyV1/bin/data/video/airel640.mp4",
-      "currentVideoSource" : 1,
-      "useVideoFile" : true
+      "currentVideoPath" : "test_video.mp4",
+      "currentVideoSource" : 0,
+      "useVideoFile" : false
    },
    "window" : {
       "originalHeight" : 640,

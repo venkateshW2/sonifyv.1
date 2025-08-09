@@ -527,6 +527,11 @@ void ofApp::keyPressed(int key){
 		sendTestMIDINote();
 	}
 	
+	if (key == 'p' || key == 'P') {
+		// Debug IP camera connection
+		debugIPCameraConnection();
+	}
+	
 	if (key == OF_KEY_ESC) {
 		// Deselect current line
 		if (selectedLineIndex != -1) {
@@ -887,6 +892,7 @@ bool ofApp::connectToIPCamera(const string& url) {
 		return false;  // Already attempting connection
 	}
 	
+	ofLogNotice() << "=== IP CAMERA DEBUGGING ===";
 	ofLogNotice() << "Attempting to connect to IP camera: " << url;
 	
 	// Basic URL validation
@@ -909,6 +915,65 @@ bool ofApp::connectToIPCamera(const string& url) {
 	
 	// Check if this is an RTSP stream
 	bool isRTSP = (url.find("rtsp://") == 0);
+	bool isHTTP = (url.find("http://") == 0 || url.find("https://") == 0);
+	
+	// DEBUG: Test network connectivity first
+	ofLogNotice() << "Testing network connectivity...";
+	
+	// Extract host and port from URL for connectivity test
+	string host, path;
+	int port = 80;
+	
+	if (isHTTP) {
+		// Parse HTTP URL
+		size_t protocol_end = url.find("://");
+		if (protocol_end != string::npos) {
+			string after_protocol = url.substr(protocol_end + 3);
+			size_t slash_pos = after_protocol.find('/');
+			string host_port = after_protocol.substr(0, slash_pos);
+			path = after_protocol.substr(slash_pos);
+			
+			size_t colon_pos = host_port.find(':');
+			if (colon_pos != string::npos) {
+				host = host_port.substr(0, colon_pos);
+				port = ofToInt(host_port.substr(colon_pos + 1));
+			} else {
+				host = host_port;
+				port = (url.find("https://") == 0) ? 443 : 80;
+			}
+		}
+	}
+	
+	ofLogNotice() << "Parsed URL - Host: " << host << ", Port: " << port << ", Path: " << path;
+	
+	// Test basic connectivity using system ping
+	string ping_cmd = "ping -c 1 -W 2000 " + host + " 2>/dev/null";
+	int ping_result = system(ping_cmd.c_str());
+	ofLogNotice() << "Network ping test result: " << (ping_result == 0 ? "SUCCESS" : "FAILED");
+	
+	// Test HTTP connectivity using curl
+	if (isHTTP) {
+		string curl_cmd = "curl -I -s -m 5 " + url + " | head -1";
+		FILE* curl_pipe = popen(curl_cmd.c_str(), "r");
+		if (curl_pipe) {
+			char buffer[256];
+			string response;
+			while (fgets(buffer, sizeof(buffer), curl_pipe) != NULL) {
+				response += buffer;
+			}
+			pclose(curl_pipe);
+			
+			ofLogNotice() << "HTTP response: " << response;
+			if (!response.empty()) {
+				ofLogNotice() << "HTTP connectivity: SUCCESS";
+			} else {
+				ofLogNotice() << "HTTP connectivity: FAILED";
+			}
+		}
+	}
+	
+	// DEBUG: Check if URL requires specific headers or user-agent
+	ofLogNotice() << "Testing with different user agents...";
 	
 	if (isRTSP) {
 		ofLogNotice() << "Detected RTSP stream, attempting connection...";
@@ -918,35 +983,147 @@ bool ofApp::connectToIPCamera(const string& url) {
 		ofLogNotice() << "Detected HTTP/MJPEG stream, attempting connection...";
 	}
 	
+	// DEBUG: Try alternative URL formats for IP Webcam
+	vector<string> test_urls;
+	test_urls.push_back(url); // Original
+	
+	// Try common IP Webcam variations
+	if (url.find("/video") != string::npos) {
+		test_urls.push_back(url + "?dummy=param.mjpg"); // Force MJPEG extension
+		test_urls.push_back(url.substr(0, url.find("/video")) + "/video.mjpg");
+		test_urls.push_back(url.substr(0, url.find("/video")) + "/mjpeg");
+		test_urls.push_back(url.substr(0, url.find("/video")) + "/mjpeg.cgi");
+	}
+	
+	// Add RTSP endpoints for IP Webcam (works without browser)
+	if (url.find("http://") == 0) {
+		// Convert HTTP to RTSP for IP Webcam - these work without browser
+		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_ulaw.sdp");
+		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_pcm.sdp");
+		test_urls.push_back("rtsp://" + host + ":" + ofToString(port) + "/h264_opus.sdp");
+	}
+	
+	// Always add HTTP endpoints
+	if (url.find("http://") == 0 || url.find("rtsp://") == 0) {
+		test_urls.push_back("http://" + host + ":" + ofToString(port) + "/video");
+		test_urls.push_back("http://" + host + ":" + ofToString(port) + "/videostream.cgi");
+	}
+	
+	bool success = false;
+	string final_url;
+	
+	// Try each URL variant
+	for (const auto& test_url : test_urls) {
+		ofLogNotice() << "Testing URL: " << test_url;
+		
+		// Create temporary player for testing
+		ofVideoPlayer temp_player;
+		success = temp_player.load(test_url);
+		
+		if (success && temp_player.isLoaded()) {
+			final_url = test_url;
+			ofLogNotice() << "SUCCESS: Found working URL: " << final_url;
+			break;
+		} else {
+			ofLogNotice() << "FAILED: URL " << test_url << " did not load";
+			
+			// Get more detailed error information
+			ofLogNotice() << "Player loaded: " << (temp_player.isLoaded() ? "YES" : "NO");
+			ofLogNotice() << "Player width: " << temp_player.getWidth();
+			ofLogNotice() << "Player height: " << temp_player.getHeight();
+		}
+		
+		// Small delay between attempts
+		ofSleepMillis(500);
+	}
+	
+	// If no variant worked, try the original URL with the main player
+	if (!success) {
+		final_url = url;
+		ofLogNotice() << "No URL variants worked, trying original with main player...";
+	}
+	
 	// Try to load the IP camera stream (works for both HTTP/MJPEG and RTSP on macOS)
-	bool success = ipCameraPlayer.load(url);
+	ofLogNotice() << "Final attempt with URL: " << final_url;
+	success = ipCameraPlayer.load(final_url);
 	
 	if (success && ipCameraPlayer.isLoaded()) {
 		ipCameraConnected = true;
-		isConnecting = false;
-		currentVideoSource = IP_CAMERA;
+		connectionError = "";
+		ofLogNotice() << "Successfully connected to IP camera: " << final_url;
 		
-		// Configure the player
-		ipCameraPlayer.setLoopState(OF_LOOP_NONE);  // Streaming doesn't loop
-		ipCameraPlayer.setVolume(0.0f);  // Mute audio
-		ipCameraPlayer.play();
+		// Get video dimensions
+		int width = ipCameraPlayer.getWidth();
+		int height = ipCameraPlayer.getHeight();
+		ofLogNotice() << "Video dimensions: " << width << "x" << height;
 		
-		string streamType = isRTSP ? "RTSP" : "HTTP/MJPEG";
-		ofLogNotice() << "Successfully connected to IP camera (" << streamType << ")";
-		ofLogNotice() << "Stream size: " << ipCameraPlayer.getWidth() << "x" << ipCameraPlayer.getHeight();
-		return true;
 	} else {
-		isConnecting = false;
 		ipCameraConnected = false;
-		string streamType = isRTSP ? "RTSP" : "HTTP/MJPEG";
-		connectionError = "Failed to connect to " + streamType + " stream";
 		
-		if (isRTSP) {
-			ofLogError() << "Failed to connect to RTSP stream: " << url;
-			ofLogError() << "Make sure the RTSP server is running and accessible";
-		} else {
-			ofLogError() << "Failed to connect to HTTP/MJPEG stream: " << url;
+		// Enhanced debugging for MJPEG streams
+		ofLogError() << "=== CONNECTION FAILED ===";
+		ofLogError() << "Final URL: " << final_url;
+		ofLogError() << "Player loaded: " << (ipCameraPlayer.isLoaded() ? "YES" : "NO");
+		
+		// Try alternative approaches for MJPEG streams
+		ofLogNotice() << "Trying alternative MJPEG handling...";
+		
+		// Method 1: Try snapshot endpoint (single frame)
+		string snapshot_url = final_url.substr(0, final_url.find("/video")) + "/shot.jpg";
+		ofLogNotice() << "Testing snapshot URL: " << snapshot_url;
+		
+		ofVideoPlayer snapshot_player;
+		bool snapshot_success = snapshot_player.load(snapshot_url);
+		if (snapshot_success) {
+			ofLogNotice() << "Snapshot URL works! Using snapshot mode";
+			ipCameraUrl = snapshot_url;
+			success = ipCameraPlayer.load(snapshot_url);
+			if (success) {
+				ipCameraConnected = true;
+				connectionError = "Using snapshot mode (single frame)";
+				return;
+			}
 		}
+		
+		// Method 2: Try different IP Webcam endpoints
+		vector<string> alternative_endpoints = {
+			"/videofeed",
+			"/video.mjpg",
+			"/mjpeg",
+			"/live",
+			"/stream"
+		};
+		
+		string base_url = "http://192.168.1.14:8080";
+		for (const auto& endpoint : alternative_endpoints) {
+			string alt_url = base_url + endpoint;
+			ofLogNotice() << "Testing alternative endpoint: " << alt_url;
+			
+			ofVideoPlayer alt_player;
+			if (alt_player.load(alt_url)) {
+				ofLogNotice() << "Found working endpoint: " << alt_url;
+				ipCameraUrl = alt_url;
+				success = ipCameraPlayer.load(alt_url);
+				if (success) {
+					ipCameraConnected = true;
+					connectionError = "";
+					return;
+				}
+			}
+		}
+		
+		// Method 3: Use ofxHTTP for MJPEG streaming (fallback)
+		ofLogError() << "Standard endpoints failed, trying HTTP-based approach";
+		connectionError = "MJPEG format not supported by AVFoundation";
+		
+		// Provide specific guidance
+		ofLogError() << "=== SOLUTIONS ===";
+		ofLogError() << "1. Try DroidCam app instead (better compatibility)";
+		ofLogError() << "2. Use VLC to test: vlc http://192.168.1.14:8080/video";
+		ofLogError() << "3. Check IP Webcam settings for MJPEG format";
+		ofLogError() << "4. Try different Android IP camera app";
+	}
+		
 		return false;
 	}
 }
@@ -1017,6 +1194,140 @@ void ofApp::retryIPCameraConnection() {
 		ofSleepMillis(2000);  // Wait 2 seconds between retries
 		connectToIPCamera(ipCameraUrl);
 	}
+}
+
+//--------------------------------------------------------------
+void ofApp::debugIPCameraConnection() {
+	ofLogNotice() << "=== IP CAMERA DEBUGGING TOOL ===";
+	ofLogNotice() << "Current URL: " << ipCameraUrl;
+	
+	// Test with curl to get detailed HTTP response
+	string curl_cmd = "curl -v -I --max-time 10 " + ipCameraUrl + " 2>&1";
+	ofLogNotice() << "Running: " << curl_cmd;
+	
+	FILE* pipe = popen(curl_cmd.c_str(), "r");
+	if (pipe) {
+		char buffer[1024];
+		string full_response;
+		while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+			full_response += buffer;
+		}
+		pclose(pipe);
+		
+		ofLogNotice() << "=== CURL DEBUG OUTPUT ===";
+		ofLogNotice() << full_response;
+		
+		// Parse for specific issues
+		if (full_response.find("404") != string::npos) {
+			ofLogError() << "HTTP 404: URL not found - try different endpoint";
+		} else if (full_response.find("401") != string::npos) {
+			ofLogError() << "HTTP 401: Authentication required";
+		} else if (full_response.find("403") != string::npos) {
+			ofLogError() << "HTTP 403: Access forbidden";
+		} else if (full_response.find("Connection refused") != string::npos) {
+			ofLogError() << "Connection refused - check IP and port";
+		} else if (full_response.find("timeout") != string::npos) {
+			ofLogError() << "Connection timeout - check network/firewall";
+		} else if (full_response.find("Content-Type: image/jpeg") != string::npos) {
+			ofLogNotice() << "MJPEG stream detected - should work with AVFoundation";
+		} else if (full_response.find("Content-Type: multipart/x-mixed-replace") != string::npos) {
+			ofLogNotice() << "MJPEG multipart stream detected - should work with AVFoundation";
+		}
+	}
+	
+	// Test with different user agents
+	vector<string> user_agents = {
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+		"VLC/3.0.18 LibVLC/3.0.18",
+		"QuickTime/7.7.9",
+		"AVFoundation/1.0"
+	};
+	
+	// Special handling for RTSP streams (no browser needed)
+	if (ipCameraUrl.find("rtsp://") == 0) {
+		ofLogNotice() << "RTSP stream detected - attempting direct AVFoundation connection";
+		ofLogNotice() << "RTSP streams work without browser - AVFoundation handles RTSP natively";
+		
+		// RTSP doesn't need HTTP testing - skip to direct connection
+		ofLogNotice() << "Skipping HTTP tests for RTSP - proceeding with AVFoundation";
+	}
+	
+	for (const auto& ua : user_agents) {
+		string ua_cmd = "curl -I -s -A \"" + ua + "\" --max-time 5 " + ipCameraUrl + " | head -1";
+		ofLogNotice() << "Testing with User-Agent: " << ua;
+		
+		FILE* ua_pipe = popen(ua_cmd.c_str(), "r");
+		if (ua_pipe) {
+			char buffer[256];
+			string response;
+			while (fgets(buffer, sizeof(buffer), ua_pipe) != NULL) {
+				response += buffer;
+			}
+			pclose(ua_pipe);
+			
+			ofLogNotice() << "Response: " << response;
+		}
+	}
+	
+	// Test common IP Webcam endpoints
+	ofLogNotice() << "=== TESTING COMMON IP WEBCAM ENDPOINTS ===";
+	vector<string> test_endpoints = {
+		"/video",
+		"/video.mjpg",
+		"/mjpeg",
+		"/mjpeg.cgi",
+		"/videostream.cgi",
+		"/axis-cgi/mjpg/video.cgi",
+		"/cgi-bin/mjpg/video.cgi"
+	};
+	
+	string base_url = ipCameraUrl;
+	size_t last_slash = base_url.find_last_of('/');
+	if (last_slash != string::npos) {
+		base_url = base_url.substr(0, last_slash);
+	}
+	
+	for (const auto& endpoint : test_endpoints) {
+		string test_url = base_url + endpoint;
+		string test_cmd = "curl -I -s --max-time 3 " + test_url + " | head -1";
+		
+		FILE* test_pipe = popen(test_cmd.c_str(), "r");
+		if (test_pipe) {
+			char buffer[256];
+			string response;
+			while (fgets(buffer, sizeof(buffer), test_pipe) != NULL) {
+				response += buffer;
+			}
+			pclose(test_pipe);
+			
+			if (!response.empty() && response.find("200") != string::npos) {
+				ofLogNotice() << "WORKING: " << test_url << " - " << response;
+			} else {
+				ofLogNotice() << "FAILED: " << test_url;
+			}
+		}
+	}
+	
+	// Test with VLC (if available)
+	ofLogNotice() << "=== TESTING WITH VLC ===";
+	string vlc_test = "vlc --intf dummy --run-time=3 " + ipCameraUrl + " vlc://quit 2>&1 | grep -E '(error|failed|unable)' | head -5";
+	FILE* vlc_pipe = popen(vlc_test.c_str(), "r");
+	if (vlc_pipe) {
+		char buffer[1024];
+		string vlc_output;
+		while (fgets(buffer, sizeof(buffer), vlc_pipe) != NULL) {
+			vlc_output += buffer;
+		}
+		pclose(vlc_pipe);
+		
+		if (!vlc_output.empty()) {
+			ofLogNotice() << "VLC errors: " << vlc_output;
+		} else {
+			ofLogNotice() << "VLC test completed without obvious errors";
+		}
+	}
+	
+	ofLogNotice() << "=== DEBUGGING COMPLETE ===";
 }
 
 
@@ -2106,6 +2417,10 @@ void ofApp::drawMainControlsTab() {
 		if (ImGui::Button("Disconnect") && ipCameraConnected) {
 			disconnectIPCamera();
 		}
+		ImGui::SameLine();
+		if (ImGui::Button("Debug Connection")) {
+			debugIPCameraConnection();
+		}
 		
 		// Preset buttons for common IP camera apps
 		ImGui::Text("HTTP/MJPEG Presets:");
@@ -2125,6 +2440,11 @@ void ofApp::drawMainControlsTab() {
 			ipCameraUrl = string(urlBuffer);
 		}
 		ImGui::SameLine();
+		if (ImGui::Button("IP Webcam PCM")) {
+			strcpy(urlBuffer, "rtsp://192.168.29.151:8080/h264_pcm.sdp");
+			ipCameraUrl = string(urlBuffer);
+		}
+		ImGui::SameLine();
 		if (ImGui::Button("Generic RTSP")) {
 			strcpy(urlBuffer, "rtsp://192.168.1.100:554/live");
 			ipCameraUrl = string(urlBuffer);
@@ -2140,6 +2460,28 @@ void ofApp::drawMainControlsTab() {
 		
 		// Instructions
 		ImGui::TextWrapped("Enter IP camera URL and click Test Connection. Use presets for common apps like IP Webcam.");
+		
+		// RTSP Quick Setup
+		ImGui::Separator();
+		ImGui::Text("RTSP Quick Setup:");
+		static char ipBuffer[32] = "192.168.29.151";
+		if (ImGui::InputText("IP Address", ipBuffer, sizeof(ipBuffer))) {
+			// Update RTSP URLs dynamically
+		}
+		if (ImGui::Button("Set RTSP URLs")) {
+			string ip = string(ipBuffer);
+			string rtsp_ulaw = "rtsp://" + ip + ":8080/h264_ulaw.sdp";
+			string rtsp_pcm = "rtsp://" + ip + ":8080/h264_pcm.sdp";
+			
+			// Show in console for copy/paste
+			ofLogNotice() << "RTSP URLs for " << ip << ":";
+			ofLogNotice() << "  Primary: " << rtsp_ulaw;
+			ofLogNotice() << "  Backup:  " << rtsp_pcm;
+			
+			// Auto-set the primary RTSP URL
+			strcpy(urlBuffer, rtsp_ulaw.c_str());
+			ipCameraUrl = rtsp_ulaw;
+		}
 	}
 	
 	// Video Controls Section
@@ -2289,6 +2631,7 @@ void ofApp::drawMainControlsTab() {
 		ImGui::Text("");
 		ImGui::Text("System:");
 		ImGui::Text("'t' - Send test MIDI note");
+		ImGui::Text("'p' - Debug IP camera connection");
 		ImGui::Text("'g' - Toggle this GUI");
 	}
 	
