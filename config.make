@@ -148,7 +148,14 @@ export MAC_OS_MIN_VERSION = 10.15
 export MAC_OS_CPP_VER = -std=c++17
 
 # CoreML configuration - native Apple frameworks
-PROJECT_LDFLAGS = -framework CoreML -framework CoreVideo -framework Foundation
+PROJECT_LDFLAGS = -framework CoreML -framework CoreVideo -framework Foundation -framework Vision -framework Accelerate
+
+# Fix for Vision framework SIMD issues - Xcode 16/macOS SDK 15 solution
+# Based on research: explicit header search paths and proper SDK targeting
+PROJECT_CFLAGS = -I/usr/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -Wno-error -mmacosx-version-min=10.15
+
+# Remove problematic SIMD disabling that can cause more issues
+# PROJECT_DEFINES += SIMD_COMPILER_HAS_REQUIRED_FEATURES=0
 
 # Fix ofxJSON amalgamated source issue  
 PROJECT_DEFINES = JSON_IS_AMALGAMATION

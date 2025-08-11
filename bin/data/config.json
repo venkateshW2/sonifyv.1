@@ -1,73 +1,194 @@
 {
+   "communication" : {
+      "midiEnabled" : true,
+      "midiNoteDuration" : 500,
+      "oscEnabled" : true,
+      "oscHost" : "127.0.0.1",
+      "oscPort" : 12000,
+      "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1" ]
+   },
    "detection" : {
-      "categories" : [ false, false, false, false ],
-      "confidenceThreshold" : 0.7699999809265137,
-      "enabled" : false,
-      "frameSkip" : 1,
-      "maxSelectedClasses" : 8,
-      "preset" : "Custom",
-      "selectedClasses" : null,
-      "showDetections" : true,
-      "showLines" : true
-   },
-   "gui" : {
-      "show" : true
-   },
-   "ipCamera" : {
-      "url" : "http://localhost:8080/video"
+      "categoryEnabled" : [ false, true, false, false ],
+      "confidenceThreshold" : 0.2099999934434891,
+      "currentPreset" : "Custom",
+      "detectionFrameSkip" : 3,
+      "displayScale" : 1,
+      "enableDetection" : false,
+      "enabledClasses" : [
+         true,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false
+      ],
+      "maxSelectedClasses" : 15,
+      "selectedClassIds" : [ 0 ],
+      "showDetections" : true
    },
    "lines" : {
-      "count" : 1,
-      "line_0" : {
-         "colorB" : 128,
-         "colorG" : 0,
-         "colorR" : 255,
-         "durationType" : 0,
-         "endX" : 151,
-         "endY" : 267,
-         "fixedDuration" : 500,
-         "fixedVelocity" : 100,
-         "midiChannel" : 1,
-         "midiPortName" : "IAC Driver Bus 1",
-         "octave" : 4,
-         "randomizeNote" : true,
-         "scaleNoteIndex" : 0,
-         "startX" : 93,
-         "startY" : 269,
-         "velocityType" : 0
-      }
+      "lines" : [
+         {
+            "color" : {
+               "b" : 255,
+               "g" : 0,
+               "r" : 255
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 547,
+               "y" : 204
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : true,
+            "scaleNoteIndex" : 0,
+            "startPoint" : {
+               "x" : 180,
+               "y" : 213
+            },
+            "velocityType" : 0
+         },
+         {
+            "color" : {
+               "b" : 0,
+               "g" : 128,
+               "r" : 255
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 584,
+               "y" : 323
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : true,
+            "scaleNoteIndex" : 0,
+            "startPoint" : {
+               "x" : 50,
+               "y" : 409
+            },
+            "velocityType" : 0
+         },
+         {
+            "color" : {
+               "b" : 128,
+               "g" : 0,
+               "r" : 255
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 543,
+               "y" : 368
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : true,
+            "scaleNoteIndex" : 1,
+            "startPoint" : {
+               "x" : 353,
+               "y" : 453
+            },
+            "velocityType" : 0
+         }
+      ],
+      "masterRootNote" : 5,
+      "masterScale" : "Pentatonic",
+      "showLines" : true
    },
-   "masterMusicalSystem" : {
-      "rootNote" : 4,
-      "scale" : "Chromatic"
-   },
-   "metadata" : {
-      "application" : "SonifyV1",
-      "timestamp" : "2025-08-09-22-13-01-675",
-      "version" : "1.0"
-   },
-   "osc" : {
-      "enabled" : true,
-      "host" : "127.0.0.1",
-      "port" : 15000
-   },
-   "tracking" : {
-      "enableOcclusionTracking" : false,
-      "maxFramesWithoutDetection" : 10,
-      "maxTrajectoryPoints" : 10,
-      "showTrajectoryTrails" : false,
-      "showVelocityVectors" : false,
-      "threshold" : 50,
-      "trailFadeTime" : 0.800000011920929
-   },
+   "timestamp" : "2025-08-11-11-43-15-719",
+   "ui" : null,
+   "version" : "1.0",
    "video" : {
       "currentVideoPath" : "/Users/justmac/Downloads/videos/People Crossing HD Video.mp4",
       "currentVideoSource" : 1,
+      "frameRequestInterval" : 0.5,
+      "ipCameraUrl" : "http://localhost:8080/video",
+      "ipFrameSkip" : 1,
       "useVideoFile" : true
-   },
-   "window" : {
-      "originalHeight" : 640,
-      "originalWidth" : 1050
    }
 }
 
