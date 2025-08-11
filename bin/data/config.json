@@ -8,14 +8,14 @@
       "selectedMidiPorts" : [ "Network Session 1" ]
    },
    "detection" : {
-      "categoryEnabled" : [ false, true, true, false ],
+      "categoryEnabled" : [ false, false, true, false ],
       "confidenceThreshold" : 0.2099999934434891,
       "currentPreset" : "Custom",
       "detectionFrameSkip" : 3,
       "displayScale" : 1,
-      "enableDetection" : false,
+      "enableDetection" : true,
       "enabledClasses" : [
-         true,
+         false,
          false,
          false,
          false,
@@ -97,7 +97,7 @@
          false
       ],
       "maxSelectedClasses" : 15,
-      "selectedClassIds" : [ 0, 14, 15, 16, 17, 18, 19, 20, 21 ],
+      "selectedClassIds" : [ 14, 15, 16, 17, 18, 19, 20, 21 ],
       "showDetections" : true
    },
    "lines" : {
@@ -134,8 +134,8 @@
             },
             "durationType" : 0,
             "endPoint" : {
-               "x" : 156,
-               "y" : 386
+               "x" : 155,
+               "y" : 518
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
@@ -149,65 +149,17 @@
                "y" : 323
             },
             "velocityType" : 0
-         },
-         {
-            "color" : {
-               "b" : 255,
-               "g" : 0,
-               "r" : 0
-            },
-            "durationType" : 0,
-            "endPoint" : {
-               "x" : 439,
-               "y" : 213
-            },
-            "fixedDuration" : 500,
-            "fixedVelocity" : 100,
-            "midiChannel" : 1,
-            "midiPortName" : "IAC Driver Bus 1",
-            "octave" : 4,
-            "randomizeNote" : true,
-            "scaleNoteIndex" : 1,
-            "startPoint" : {
-               "x" : 253,
-               "y" : 559
-            },
-            "velocityType" : 0
-         },
-         {
-            "color" : {
-               "b" : 255,
-               "g" : 0,
-               "r" : 255
-            },
-            "durationType" : 0,
-            "endPoint" : {
-               "x" : 292,
-               "y" : 170
-            },
-            "fixedDuration" : 500,
-            "fixedVelocity" : 100,
-            "midiChannel" : 1,
-            "midiPortName" : "IAC Driver Bus 1",
-            "octave" : 4,
-            "randomizeNote" : true,
-            "scaleNoteIndex" : 2,
-            "startPoint" : {
-               "x" : 121,
-               "y" : 163
-            },
-            "velocityType" : 0
          }
       ],
       "masterRootNote" : 5,
       "masterScale" : "Pentatonic",
       "showLines" : true
    },
-   "timestamp" : "2025-08-11-17-30-33-544",
+   "timestamp" : "2025-08-11-18-09-58-335",
    "ui" : null,
    "version" : "1.0",
    "video" : {
-      "currentVideoPath" : "/Users/justmac/Downloads/videos/newBird Flying 4K Video.mp4",
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/newAnimal Running Video 1920x1080 (1).mp4",
       "currentVideoSource" : 1,
       "frameRequestInterval" : 0.5,
       "ipCameraUrl" : "http://localhost:8080/video",
