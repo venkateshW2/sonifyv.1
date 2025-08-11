@@ -32,7 +32,8 @@ public:
                      class LineManager* lineMgr, 
                      class DetectionManager* detMgr,
                      class CommunicationManager* commMgr,
-                     class ConfigManager* confMgr);
+                     class ConfigManager* confMgr,
+                     class PoseManager* poseMgr);
     
     // GUI state variables - EXACT COPY from working backup
     float confidenceThreshold;

@@ -21,23 +21,24 @@ public:
     // Pose detection control
     void setPoseDetectionEnabled(bool enabled) { poseDetectionEnabled = enabled; }
     bool isPoseDetectionEnabled() const { return poseDetectionEnabled; }
-    void setConfidenceThreshold(float threshold) { poseConfidenceThreshold = threshold; }
-    float getConfidenceThreshold() const { return poseConfidenceThreshold; }
+    void setPoseConfidenceThreshold(float threshold) { poseConfidenceThreshold = threshold; }
+    float getPoseConfidenceThreshold() const { return poseConfidenceThreshold; }
     void setMaxPeopleToDetect(int maxPeople) { maxPeopleToDetect = maxPeople; }
     int getMaxPeopleToDetect() const { return maxPeopleToDetect; }
     
     // Visual display controls
-    void setSkeletonOverlayEnabled(bool enabled) { showSkeletonOverlay = enabled; }
-    void setPoseLabelsEnabled(bool enabled) { showPoseLabels = enabled; }
-    void setKeypointTrailsEnabled(bool enabled) { showKeypointTrails = enabled; }
+    void setShowSkeletonOverlay(bool enabled) { showSkeletonOverlay = enabled; }
+    void setShowPoseLabels(bool enabled) { showPoseLabels = enabled; }
+    void setShowKeypointTrails(bool enabled) { showKeypointTrails = enabled; }
     
-    bool isSkeletonOverlayEnabled() const { return showSkeletonOverlay; }
-    bool isPoseLabelsEnabled() const { return showPoseLabels; }
-    bool isKeypointTrailsEnabled() const { return showKeypointTrails; }
+    bool getShowSkeletonOverlay() const { return showSkeletonOverlay; }
+    bool getShowPoseLabels() const { return showPoseLabels; }
+    bool getShowKeypointTrails() const { return showKeypointTrails; }
     
     // Access to detected poses
     const std::vector<PersonPose>& getCurrentPoses() const { return currentPoses; }
     int getDetectedPeopleCount() const { return currentPoses.size(); }
+    int getPoseCrossingEventsCount() const { return poseCrossingEventsCount; }
     
     // Configuration
     void saveToJSON(ofxJSONElement& json);
@@ -64,6 +65,9 @@ private:
     // Manager references
     LineManager* lineManager;
     CommunicationManager* commManager;
+    
+    // Event tracking
+    int poseCrossingEventsCount;
     
     // Helper methods
     void setupPoseDetection();

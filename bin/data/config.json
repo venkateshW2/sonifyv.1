@@ -5,10 +5,10 @@
       "oscEnabled" : true,
       "oscHost" : "127.0.0.1",
       "oscPort" : 12000,
-      "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1" ]
+      "selectedMidiPorts" : [ "Network Session 1" ]
    },
    "detection" : {
-      "categoryEnabled" : [ false, true, false, false ],
+      "categoryEnabled" : [ false, true, true, false ],
       "confidenceThreshold" : 0.2099999934434891,
       "currentPreset" : "Custom",
       "detectionFrameSkip" : 3,
@@ -29,14 +29,14 @@
          false,
          false,
          false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
          false,
          false,
          false,
@@ -97,45 +97,21 @@
          false
       ],
       "maxSelectedClasses" : 15,
-      "selectedClassIds" : [ 0 ],
+      "selectedClassIds" : [ 0, 14, 15, 16, 17, 18, 19, 20, 21 ],
       "showDetections" : true
    },
    "lines" : {
       "lines" : [
          {
             "color" : {
-               "b" : 255,
-               "g" : 0,
-               "r" : 255
-            },
-            "durationType" : 0,
-            "endPoint" : {
-               "x" : 547,
-               "y" : 204
-            },
-            "fixedDuration" : 500,
-            "fixedVelocity" : 100,
-            "midiChannel" : 1,
-            "midiPortName" : "IAC Driver Bus 1",
-            "octave" : 4,
-            "randomizeNote" : true,
-            "scaleNoteIndex" : 0,
-            "startPoint" : {
-               "x" : 180,
-               "y" : 213
-            },
-            "velocityType" : 0
-         },
-         {
-            "color" : {
                "b" : 0,
-               "g" : 128,
+               "g" : 255,
                "r" : 255
             },
             "durationType" : 0,
             "endPoint" : {
-               "x" : 584,
-               "y" : 323
+               "x" : 550,
+               "y" : 315
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
@@ -145,8 +121,8 @@
             "randomizeNote" : true,
             "scaleNoteIndex" : 0,
             "startPoint" : {
-               "x" : 50,
-               "y" : 409
+               "x" : 552,
+               "y" : 156
             },
             "velocityType" : 0
          },
@@ -154,12 +130,12 @@
             "color" : {
                "b" : 128,
                "g" : 0,
-               "r" : 255
+               "r" : 128
             },
             "durationType" : 0,
             "endPoint" : {
-               "x" : 543,
-               "y" : 368
+               "x" : 156,
+               "y" : 386
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
@@ -169,8 +145,56 @@
             "randomizeNote" : true,
             "scaleNoteIndex" : 1,
             "startPoint" : {
-               "x" : 353,
-               "y" : 453
+               "x" : 153,
+               "y" : 323
+            },
+            "velocityType" : 0
+         },
+         {
+            "color" : {
+               "b" : 255,
+               "g" : 0,
+               "r" : 0
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 439,
+               "y" : 213
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : true,
+            "scaleNoteIndex" : 1,
+            "startPoint" : {
+               "x" : 253,
+               "y" : 559
+            },
+            "velocityType" : 0
+         },
+         {
+            "color" : {
+               "b" : 255,
+               "g" : 0,
+               "r" : 255
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 292,
+               "y" : 170
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : true,
+            "scaleNoteIndex" : 2,
+            "startPoint" : {
+               "x" : 121,
+               "y" : 163
             },
             "velocityType" : 0
          }
@@ -179,11 +203,11 @@
       "masterScale" : "Pentatonic",
       "showLines" : true
    },
-   "timestamp" : "2025-08-11-11-43-15-719",
+   "timestamp" : "2025-08-11-17-30-33-544",
    "ui" : null,
    "version" : "1.0",
    "video" : {
-      "currentVideoPath" : "/Users/justmac/Downloads/videos/People Crossing HD Video.mp4",
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/newBird Flying 4K Video.mp4",
       "currentVideoSource" : 1,
       "frameRequestInterval" : 0.5,
       "ipCameraUrl" : "http://localhost:8080/video",

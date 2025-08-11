@@ -1,12 +1,18 @@
 //
 //  PoseDetector.mm
-//  SonifyV1 - Functional stub implementation that generates test poses
+//  SonifyV1 - Apple Vision Framework Implementation for Real Pose Detection
 //
 //  Created for SonifyV1 Pose Detection
 //
 
 #import "PoseDetector.h"
 #import "VisionCompatibility.h"
+
+#if !USE_VISION_FRAMEWORK_STUB
+#import <Vision/Vision.h>
+#import <CoreVideo/CoreVideo.h>
+#import <CoreML/CoreML.h>
+#endif
 
 @implementation VisionPoseKeypoint
 @end
@@ -19,6 +25,11 @@
 @property (nonatomic, assign) int maxPeople;
 @property (nonatomic, strong) NSArray<NSString*>* jointNames;
 @property (nonatomic, assign) int frameCounter;
+
+#if !USE_VISION_FRAMEWORK_STUB
+// Vision framework properties
+@property (nonatomic, strong) dispatch_queue_t processingQueue;
+#endif
 @end
 
 @implementation PoseDetector
@@ -30,7 +41,7 @@
         _maxPeople = 8;
         _frameCounter = 0;
         
-        // Initialize joint names array
+        // Initialize joint names array (COCO pose format - 17 keypoints)
         _jointNames = @[
             @"nose", @"leftEye", @"rightEye", @"leftEar", @"rightEar",
             @"leftShoulder", @"rightShoulder", @"leftElbow", @"rightElbow",
@@ -38,7 +49,13 @@
             @"leftKnee", @"rightKnee", @"leftAnkle", @"rightAnkle"
         ];
         
+#if !USE_VISION_FRAMEWORK_STUB
+        // Initialize processing queue for Vision framework
+        _processingQueue = dispatch_queue_create("com.sonifyv1.posedetection", DISPATCH_QUEUE_SERIAL);
+        NSLog(@"PoseDetector: Initialized Apple Vision Framework for real pose detection");
+#else
         NSLog(@"PoseDetector: Initialized working stub implementation for testing");
+#endif
     }
     return self;
 }
@@ -50,6 +67,175 @@
                  completion:(void(^)(NSArray<VisionPersonPose*>* poses))completion {
     
     _frameCounter++;
+    
+#if !USE_VISION_FRAMEWORK_STUB
+    // Real Vision framework implementation
+    [self performVisionDetectionWithPixelData:pixelData 
+                                        width:width 
+                                       height:height 
+                                     channels:channels 
+                                   completion:completion];
+#else
+    // Fallback stub implementation for testing/debugging
+    [self performStubDetectionWithWidth:width 
+                                 height:height 
+                             completion:completion];
+#endif
+}
+
+#if !USE_VISION_FRAMEWORK_STUB
+// Real Apple Vision Framework Implementation
+- (void)performVisionDetectionWithPixelData:(unsigned char*)pixelData
+                                      width:(int)width
+                                     height:(int)height
+                                   channels:(int)channels
+                                 completion:(void(^)(NSArray<VisionPersonPose*>* poses))completion {
+    
+    // Create CVPixelBuffer from raw pixel data
+    CVPixelBufferRef pixelBuffer = NULL;
+    CVReturn result = CVPixelBufferCreateWithBytes(kCFAllocatorDefault,
+                                                  width, height,
+                                                  kCVPixelFormatType_24RGB,
+                                                  pixelData,
+                                                  width * channels,
+                                                  NULL, NULL, NULL,
+                                                  &pixelBuffer);
+    
+    if (result != kCVReturnSuccess || !pixelBuffer) {
+        NSLog(@"PoseDetector: Failed to create CVPixelBuffer");
+        completion(@[]);
+        return;
+    }
+    
+    // Create Vision request
+    VNDetectHumanBodyPoseRequest *poseRequest = [[VNDetectHumanBodyPoseRequest alloc] init];
+    poseRequest.maximumObservationCount = _maxPeople;
+    
+    // Create request handler
+    VNImageRequestHandler *requestHandler = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:pixelBuffer options:@{}];
+    
+    // Perform detection asynchronously
+    dispatch_async(_processingQueue, ^{
+        NSError *error = nil;
+        BOOL success = [requestHandler performRequests:@[poseRequest] error:&error];
+        
+        // Release pixel buffer
+        CVPixelBufferRelease(pixelBuffer);
+        
+        if (!success || error) {
+            NSLog(@"PoseDetector: Vision request failed: %@", error.localizedDescription);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(@[]);
+            });
+            return;
+        }
+        
+        // Process results
+        NSArray<VNHumanBodyPoseObservation *> *observations = poseRequest.results;
+        NSMutableArray<VisionPersonPose*>* poses = [NSMutableArray array];
+        
+        int personId = 1;
+        for (VNHumanBodyPoseObservation *observation in observations) {
+            
+            // Skip low-confidence detections
+            if (observation.confidence < self->_confidenceThreshold) {
+                continue;
+            }
+            
+            VisionPersonPose* pose = [[VisionPersonPose alloc] init];
+            pose.personID = personId++;
+            pose.timestamp = [[NSDate date] timeIntervalSince1970] * 1000;
+            pose.overallConfidence = observation.confidence;
+            pose.isValid = YES;
+            
+            NSMutableArray<VisionPoseKeypoint*>* keypoints = [NSMutableArray array];
+            
+            // Extract all recognized points
+            NSError *keypointError = nil;
+            NSDictionary<VNHumanBodyPoseObservationJointName, VNRecognizedPoint *> *recognizedPoints = 
+                [observation recognizedPointsForGroupKey:VNRecognizedPointGroupKeyAll error:&keypointError];
+            
+            if (keypointError) {
+                NSLog(@"PoseDetector: Error extracting keypoints: %@", keypointError.localizedDescription);
+                continue;
+            }
+            
+            // Map Vision joint names to our joint names
+            NSArray<VNHumanBodyPoseObservationJointName>* visionJointNames = @[
+                VNHumanBodyPoseObservationJointNameNose,
+                VNHumanBodyPoseObservationJointNameLeftEye,
+                VNHumanBodyPoseObservationJointNameRightEye,
+                VNHumanBodyPoseObservationJointNameLeftEar,
+                VNHumanBodyPoseObservationJointNameRightEar,
+                VNHumanBodyPoseObservationJointNameLeftShoulder,
+                VNHumanBodyPoseObservationJointNameRightShoulder,
+                VNHumanBodyPoseObservationJointNameLeftElbow,
+                VNHumanBodyPoseObservationJointNameRightElbow,
+                VNHumanBodyPoseObservationJointNameLeftWrist,
+                VNHumanBodyPoseObservationJointNameRightWrist,
+                VNHumanBodyPoseObservationJointNameLeftHip,
+                VNHumanBodyPoseObservationJointNameRightHip,
+                VNHumanBodyPoseObservationJointNameLeftKnee,
+                VNHumanBodyPoseObservationJointNameRightKnee,
+                VNHumanBodyPoseObservationJointNameLeftAnkle,
+                VNHumanBodyPoseObservationJointNameRightAnkle
+            ];
+            
+            for (int i = 0; i < self->_jointNames.count && i < visionJointNames.count; i++) {
+                NSString* jointName = self->_jointNames[i];
+                VNHumanBodyPoseObservationJointName visionJointName = visionJointNames[i];
+                
+                VisionPoseKeypoint* keypoint = [[VisionPoseKeypoint alloc] init];
+                keypoint.jointName = jointName;
+                
+                VNRecognizedPoint* point = recognizedPoints[visionJointName];
+                if (point) {
+                    keypoint.confidence = point.confidence;
+                    keypoint.isVisible = keypoint.confidence > self->_confidenceThreshold;
+                    
+                    if (keypoint.isVisible) {
+                        // Convert from Vision normalized coordinates (0-1) to pixel coordinates
+                        // Vision uses bottom-left origin, we need top-left
+                        CGPoint location = point.location;
+                        keypoint.x = location.x * width;
+                        keypoint.y = (1.0 - location.y) * height; // Flip Y coordinate
+                    } else {
+                        keypoint.x = 0;
+                        keypoint.y = 0;
+                    }
+                } else {
+                    keypoint.confidence = 0.0;
+                    keypoint.isVisible = NO;
+                    keypoint.x = 0;
+                    keypoint.y = 0;
+                }
+                
+                keypoint.velocityX = 0; // TODO: Calculate velocity from previous frames
+                keypoint.velocityY = 0;
+                
+                [keypoints addObject:keypoint];
+            }
+            
+            pose.keypoints = keypoints;
+            [poses addObject:pose];
+        }
+        
+        if (poses.count > 0) {
+            NSLog(@"PoseDetector: Detected %lu real poses using Vision framework", (unsigned long)poses.count);
+        }
+        
+        // Return results on main queue
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(poses);
+        });
+    });
+}
+#endif
+
+// Stub implementation (kept for fallback/testing)
+- (void)performStubDetectionWithWidth:(int)width
+                               height:(int)height
+                           completion:(void(^)(NSArray<VisionPersonPose*>* poses))completion {
     
     // Generate test poses every 30 frames (once per second at 30fps)
     NSMutableArray<VisionPersonPose*>* poses = [NSMutableArray array];
@@ -135,7 +321,7 @@
         }
         
         if (poses.count > 0) {
-            NSLog(@"PoseDetector: Generated %lu test poses (frame %d)", (unsigned long)poses.count, _frameCounter);
+            NSLog(@"PoseDetector: Generated %lu test poses (frame %d) - STUB MODE", (unsigned long)poses.count, _frameCounter);
         }
     }
     
@@ -149,12 +335,20 @@
 
 - (void)setConfidenceThreshold:(float)threshold {
     _confidenceThreshold = threshold;
-    NSLog(@"PoseDetector: Set confidence threshold to %.2f (working stub)", threshold);
+#if !USE_VISION_FRAMEWORK_STUB
+    NSLog(@"PoseDetector: Set confidence threshold to %.2f (Vision framework)", threshold);
+#else
+    NSLog(@"PoseDetector: Set confidence threshold to %.2f (stub mode)", threshold);
+#endif
 }
 
 - (void)setMaxPeople:(int)maxPeople {
     _maxPeople = maxPeople;
-    NSLog(@"PoseDetector: Set max people to %d (working stub)", maxPeople);
+#if !USE_VISION_FRAMEWORK_STUB
+    NSLog(@"PoseDetector: Set max people to %d (Vision framework)", maxPeople);
+#else
+    NSLog(@"PoseDetector: Set max people to %d (stub mode)", maxPeople);
+#endif
 }
 
 - (NSArray<NSString*>*)getJointNames {

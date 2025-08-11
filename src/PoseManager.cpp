@@ -11,6 +11,7 @@ PoseManager::PoseManager() {
     
     lineManager = nullptr;
     commManager = nullptr;
+    poseCrossingEventsCount = 0;
 }
 
 PoseManager::~PoseManager() {
@@ -24,8 +25,18 @@ void PoseManager::setup() {
 void PoseManager::update(ofPixels& videoFrame) {
     if (!poseDetectionEnabled) return;
     
-    // Stub implementation - pose detection disabled for now
-    currentPoses.clear();
+    // Real pose detection using Vision framework
+    try {
+        currentPoses = poseDetector.detectPoses(videoFrame);
+        
+        // Process pose events for line crossing
+        if (lineManager && commManager && !currentPoses.empty()) {
+            checkPoseLineCrossings();
+        }
+    } catch (const std::exception& e) {
+        ofLogError() << "PoseManager: Error in pose detection: " << e.what();
+        currentPoses.clear();
+    }
 }
 
 void PoseManager::draw() {
@@ -43,7 +54,13 @@ void PoseManager::draw() {
 void PoseManager::setupPoseDetection() {
     poseDetector.setConfidenceThreshold(poseConfidenceThreshold);
     poseDetector.setMaxPeople(maxPeopleToDetect);
-    ofLogNotice() << "PoseManager: Pose detection system initialized (stub)";
+    
+    bool setupSuccess = poseDetector.setup();
+    if (setupSuccess) {
+        ofLogNotice() << "PoseManager: Apple Vision Framework pose detection system initialized successfully";
+    } else {
+        ofLogError() << "PoseManager: Failed to initialize pose detection system";
+    }
 }
 
 void PoseManager::saveToJSON(ofxJSONElement& json) {
