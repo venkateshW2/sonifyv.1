@@ -992,28 +992,26 @@ void DetectionManager::updateVehicleTrackingSafe() {
         
         // RESTORED: Proper vehicle tracking algorithm from working backup
         
-        // Update existing tracked vehicles with new detections
-        for (auto& vehicle : trackedVehicles) {
+        // Update existing tracked objects with new detections
+        for (auto& vehicle : trackedVehicles) {  // Note: "vehicle" variable name kept for compatibility
             vehicle.framesSinceLastSeen++;
             vehicle.hasMovement = false;
         }
         
-        // Try to match current detections with tracked vehicles
+        // Try to match current detections with tracked objects
         for (const auto& detection : detections) {
-            // Track vehicles AND people for line crossing (person=0, vehicles=1-8)
-            bool isTrackable = (detection.classId == 0 || detection.classId == 1 || detection.classId == 2 || 
-                               detection.classId == 3 || detection.classId == 4 || detection.classId == 5 || 
-                               detection.classId == 6 || detection.classId == 7 || detection.classId == 8);
-            if (!isTrackable) continue;
+            // Track ALL detected objects for line crossing (all 80 COCO classes)
+            // This includes: people, vehicles, animals, and objects
+            // Any detected object can trigger MIDI events when crossing lines
             
             ofPoint detectionCenter = ofPoint(
                 detection.box.x + detection.box.width / 2,
                 detection.box.y + detection.box.height / 2
             );
             
-            // Find closest tracked vehicle
+            // Find closest tracked object of the same type
             int bestMatchIndex = -1;
-            float bestDistance = vehicleTrackingThreshold;
+            float bestDistance = vehicleTrackingThreshold;  // Note: threshold name kept for compatibility
             
             for (int i = 0; i < trackedVehicles.size(); i++) {
                 float distance = calculateDistance(detectionCenter, trackedVehicles[i].centerCurrent);
@@ -1024,8 +1022,8 @@ void DetectionManager::updateVehicleTrackingSafe() {
             }
             
             if (bestMatchIndex >= 0) {
-                // Update existing vehicle - CRITICAL FOR LINE CROSSING
-                TrackedVehicle& vehicle = trackedVehicles[bestMatchIndex];
+                // Update existing tracked object - CRITICAL FOR LINE CROSSING
+                TrackedVehicle& vehicle = trackedVehicles[bestMatchIndex];  // Note: variable name kept for compatibility
                 vehicle.previousBox = vehicle.currentBox;
                 vehicle.centerPrevious = vehicle.centerCurrent;  // CRITICAL: Save previous position
                 vehicle.currentBox = detection.box;
@@ -1046,18 +1044,18 @@ void DetectionManager::updateVehicleTrackingSafe() {
                 calculateVelocityAndAcceleration(vehicle);
                 
             } else {
-                // Create new tracked vehicle
-                TrackedVehicle newVehicle;
+                // Create new tracked object (any COCO class)
+                TrackedVehicle newVehicle;  // Note: structure name kept for compatibility
                 newVehicle.id = nextVehicleId++;
                 newVehicle.currentBox = detection.box;
                 newVehicle.previousBox = detection.box;
                 newVehicle.centerCurrent = detectionCenter;
                 newVehicle.centerPrevious = detectionCenter;  // Initially same position
-                newVehicle.vehicleType = detection.classId;
+                newVehicle.vehicleType = detection.classId;  // Note: stores any object type
                 newVehicle.className = detection.className;
                 newVehicle.confidence = detection.confidence;
                 newVehicle.framesSinceLastSeen = 0;
-                newVehicle.hasMovement = false;  // New vehicles start with no movement
+                newVehicle.hasMovement = false;  // New objects start with no movement
                 newVehicle.speed = 0.0f;
                 newVehicle.speedMph = 0.0f;
                 
@@ -1074,17 +1072,17 @@ void DetectionManager::updateVehicleTrackingSafe() {
                 
                 trackedVehicles.push_back(newVehicle);
                 
-                ofLogNotice() << "New vehicle tracked: ID " << newVehicle.id 
-                             << " (" << newVehicle.className << ")";
+                ofLogNotice() << "New object tracked: ID " << newVehicle.id 
+                             << " (" << newVehicle.className << ") - class " << detection.classId;
             }
         }
         
-        // Remove vehicles that haven't been seen for too long
+        // Remove objects that haven't been seen for too long
         trackedVehicles.erase(
             std::remove_if(trackedVehicles.begin(), trackedVehicles.end(),
                 [this](const TrackedVehicle& v) {
                     if (v.framesSinceLastSeen > maxFramesWithoutDetection) {
-                        ofLogNotice() << "Vehicle lost: ID " << v.id;
+                        ofLogNotice() << "Object lost: ID " << v.id << " (" << v.className << ")";
                         return true;
                     }
                     return false;

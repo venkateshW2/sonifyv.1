@@ -9,7 +9,8 @@
       "Bash(./SonifyV1)",
       "Bash(make:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

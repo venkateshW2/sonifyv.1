@@ -453,7 +453,21 @@ obj/osx/Release/src/ofApp.o: src/ofApp.cpp src/ofApp.h \
   ../../../libs/openFrameworks/video/ofVideoPlayer.h \
   ../../../libs/openFrameworks/3d/of3dUtils.h \
   ../../../libs/openFrameworks/3d/ofCamera.h \
-  ../../../libs/openFrameworks/3d/ofEasyCam.h src/CoreMLDetector.h \
+  ../../../libs/openFrameworks/3d/ofEasyCam.h src/VideoManager.h \
+  ../../../addons/ofxJSON/src/ofxJSON.h \
+  ../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h \
+  ../../../addons/ofxJSON/src/ofxJSONElement.h src/LineManager.h \
+  src/DetectionManager.h src/CoreMLDetector.h src/UIManager.h \
+  ../../../addons/ofxImGui/src/ofxImGui.h \
+  ../../../addons/ofxImGui/libs/imgui/src/imgui.h \
+  ../../../addons/ofxImGui/src/imconfig.h \
+  ../../../addons/ofxImGui/src/Gui.h \
+  ../../../addons/ofxImGui/src/EngineGLFW.h \
+  ../../../libs/glfw/include/GLFW/glfw3.h \
+  ../../../addons/ofxImGui/src/BaseEngine.h \
+  ../../../addons/ofxImGui/src/DefaultTheme.h \
+  ../../../addons/ofxImGui/src/BaseTheme.h \
+  ../../../addons/ofxImGui/src/ImHelpers.h src/CommunicationManager.h \
   ../../../addons/ofxOsc/src/ofxOsc.h \
   ../../../addons/ofxOsc/src/ofxOscArg.h \
   ../../../addons/ofxOsc/src/ofxOscMessage.h \
@@ -469,19 +483,6 @@ obj/osx/Release/src/ofApp.o: src/ofApp.cpp src/ofApp.h \
   ../../../addons/ofxOsc/libs/oscpack/src/osc/OscPacketListener.h \
   ../../../addons/ofxOsc/libs/oscpack/src/osc/OscReceivedElements.h \
   ../../../addons/ofxOsc/libs/oscpack/src/osc/../ip/PacketListener.h \
-  ../../../addons/ofxImGui/src/ofxImGui.h \
-  ../../../addons/ofxImGui/libs/imgui/src/imgui.h \
-  ../../../addons/ofxImGui/src/imconfig.h \
-  ../../../addons/ofxImGui/src/Gui.h \
-  ../../../addons/ofxImGui/src/EngineGLFW.h \
-  ../../../libs/glfw/include/GLFW/glfw3.h \
-  ../../../addons/ofxImGui/src/BaseEngine.h \
-  ../../../addons/ofxImGui/src/DefaultTheme.h \
-  ../../../addons/ofxImGui/src/BaseTheme.h \
-  ../../../addons/ofxImGui/src/ImHelpers.h \
-  ../../../addons/ofxJSON/src/ofxJSON.h \
-  ../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h \
-  ../../../addons/ofxJSON/src/ofxJSONElement.h \
   ../../../addons/ofxMidi/src/ofxMidi.h \
   ../../../addons/ofxMidi/src/ofxMidiIn.h \
   ../../../addons/ofxMidi/src/ofxBaseMidi.h \
@@ -494,7 +495,7 @@ obj/osx/Release/src/ofApp.o: src/ofApp.cpp src/ofApp.h \
   ../../../addons/ofxMidi/src/ofxMidiOut.h \
   ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h \
   ../../../addons/ofxMidi/src/ofxMidiClock.h \
-  ../../../addons/ofxMidi/src/ofxMidiTimecode.h
+  ../../../addons/ofxMidi/src/ofxMidiTimecode.h src/ConfigManager.h
 src/ofApp.h:
 ../../../libs/openFrameworks/ofMain.h:
 ../../../libs/openFrameworks/utils/ofConstants.h:
@@ -951,7 +952,25 @@ src/ofApp.h:
 ../../../libs/openFrameworks/3d/of3dUtils.h:
 ../../../libs/openFrameworks/3d/ofCamera.h:
 ../../../libs/openFrameworks/3d/ofEasyCam.h:
+src/VideoManager.h:
+../../../addons/ofxJSON/src/ofxJSON.h:
+../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h:
+../../../addons/ofxJSON/src/ofxJSONElement.h:
+src/LineManager.h:
+src/DetectionManager.h:
 src/CoreMLDetector.h:
+src/UIManager.h:
+../../../addons/ofxImGui/src/ofxImGui.h:
+../../../addons/ofxImGui/libs/imgui/src/imgui.h:
+../../../addons/ofxImGui/src/imconfig.h:
+../../../addons/ofxImGui/src/Gui.h:
+../../../addons/ofxImGui/src/EngineGLFW.h:
+../../../libs/glfw/include/GLFW/glfw3.h:
+../../../addons/ofxImGui/src/BaseEngine.h:
+../../../addons/ofxImGui/src/DefaultTheme.h:
+../../../addons/ofxImGui/src/BaseTheme.h:
+../../../addons/ofxImGui/src/ImHelpers.h:
+src/CommunicationManager.h:
 ../../../addons/ofxOsc/src/ofxOsc.h:
 ../../../addons/ofxOsc/src/ofxOscArg.h:
 ../../../addons/ofxOsc/src/ofxOscMessage.h:
@@ -967,19 +986,6 @@ src/CoreMLDetector.h:
 ../../../addons/ofxOsc/libs/oscpack/src/osc/OscPacketListener.h:
 ../../../addons/ofxOsc/libs/oscpack/src/osc/OscReceivedElements.h:
 ../../../addons/ofxOsc/libs/oscpack/src/osc/../ip/PacketListener.h:
-../../../addons/ofxImGui/src/ofxImGui.h:
-../../../addons/ofxImGui/libs/imgui/src/imgui.h:
-../../../addons/ofxImGui/src/imconfig.h:
-../../../addons/ofxImGui/src/Gui.h:
-../../../addons/ofxImGui/src/EngineGLFW.h:
-../../../libs/glfw/include/GLFW/glfw3.h:
-../../../addons/ofxImGui/src/BaseEngine.h:
-../../../addons/ofxImGui/src/DefaultTheme.h:
-../../../addons/ofxImGui/src/BaseTheme.h:
-../../../addons/ofxImGui/src/ImHelpers.h:
-../../../addons/ofxJSON/src/ofxJSON.h:
-../../../addons/ofxJSON/libs/jsoncpp/include/json/json.h:
-../../../addons/ofxJSON/src/ofxJSONElement.h:
 ../../../addons/ofxMidi/src/ofxMidi.h:
 ../../../addons/ofxMidi/src/ofxMidiIn.h:
 ../../../addons/ofxMidi/src/ofxBaseMidi.h:
@@ -993,3 +999,4 @@ src/CoreMLDetector.h:
 ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h:
 ../../../addons/ofxMidi/src/ofxMidiClock.h:
 ../../../addons/ofxMidi/src/ofxMidiTimecode.h:
+src/ConfigManager.h:

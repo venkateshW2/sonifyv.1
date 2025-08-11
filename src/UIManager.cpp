@@ -357,24 +357,24 @@ void UIManager::drawMainControlsTab() {
     if (ImGui::CollapsingHeader("Live Tracking Data")) {
         if (detectionManager) {
             ImGui::Text("Tracking Statistics:");
-            ImGui::Text("Active Vehicles: %d", detectionManager->getTrackedVehiclesCount());
+            ImGui::Text("Active Objects: %d", detectionManager->getTrackedVehiclesCount());
             ImGui::Text("Visible: %d, Occluded: %d", 
                        detectionManager->getVisibleVehiclesCount(), 
                        detectionManager->getOccludedVehiclesCount());
             
             ImGui::Separator();
             
-            // Show vehicle details
+            // Show tracked object details (all COCO classes)
             const auto& trackedVehicles = detectionManager->getTrackedVehicles();
             if (trackedVehicles.empty()) {
-                ImGui::Text("Vehicle Details: None currently tracked");
+                ImGui::Text("Object Details: None currently tracked");
             } else {
-                ImGui::Text("Vehicle Details:");
+                ImGui::Text("Tracked Objects (All Classes):");
                 for (size_t i = 0; i < std::min(trackedVehicles.size(), (size_t)5); i++) {
                     const auto& vehicle = trackedVehicles[i];
-                    ImGui::Text("ID %d: %s (%.1f%% conf, %.1f mph)", 
+                    ImGui::Text("ID %d: %s (%.1f%% conf, %.1f speed)", 
                                vehicle.id, vehicle.className.c_str(), 
-                               vehicle.confidence * 100.0f, vehicle.speedMph);
+                               vehicle.confidence * 100.0f, vehicle.speed);
                 }
                 if (trackedVehicles.size() > 5) {
                     ImGui::Text("... and %d more", (int)(trackedVehicles.size() - 5));
