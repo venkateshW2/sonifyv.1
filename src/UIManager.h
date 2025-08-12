@@ -32,8 +32,7 @@ public:
                      class LineManager* lineMgr, 
                      class DetectionManager* detMgr,
                      class CommunicationManager* commMgr,
-                     class ConfigManager* confMgr,
-                     class PoseManager* poseMgr);
+                     class ConfigManager* confMgr);
     
     // GUI state variables - EXACT COPY from working backup
     float confidenceThreshold;
@@ -46,8 +45,6 @@ public:
     bool showDetections;
     bool showLines;
     
-    // Add pose detection tab method
-    void drawPoseDetectionTab();
     void handleWindowResize(int width, int height);
     
 private:
@@ -58,5 +55,4 @@ private:
     class CommunicationManager* communicationManager;
     class CommunicationManager* commManager;  // Alias used in cpp file
     class ConfigManager* configManager;
-    class PoseManager* poseManager;  // Referenced in cpp file
 };

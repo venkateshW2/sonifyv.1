@@ -14,7 +14,6 @@ void ofApp::setup(){
     videoManager.setup();
     lineManager.setup();
     detectionManager.setup();
-    poseManager.setup();
     uiManager.setup();
     communicationManager.setup();
     configManager.setup();
@@ -27,17 +26,13 @@ void ofApp::setup(){
     detectionManager.setLineManager(&lineManager);
     detectionManager.setCommunicationManager(&communicationManager);
     
-    // CRITICAL: Connect PoseManager to LineManager and CommunicationManager for pose line crossing
-    poseManager.setLineManager(&lineManager);
-    poseManager.setCommunicationManager(&communicationManager);
-    
     uiManager.setManagers(&videoManager, &lineManager, &detectionManager, 
-                         &communicationManager, &configManager, &poseManager);
+                         &communicationManager, &configManager);
     
     communicationManager.setManagers(&lineManager);
     
     configManager.setManagers(&uiManager, &lineManager, &videoManager, 
-                             &detectionManager, &communicationManager, &poseManager);
+                             &detectionManager, &communicationManager);
     
     // Load configuration - EXACT same as working backup
     configManager.loadConfig();
@@ -51,14 +46,6 @@ void ofApp::update(){
     // Process detection only if video has new frame - EXACT same logic
     if (detectionManager.shouldProcess()) {
         detectionManager.update();
-    }
-    
-    // Process pose detection with current video frame
-    ofPixels pixels = videoManager.getCurrentPixels();
-    if (!pixels.isAllocated()) {
-        ofLogWarning() << "ofApp: No pixels available for pose detection";
-    } else {
-        poseManager.update(pixels);
     }
     
     lineManager.update();
@@ -82,9 +69,6 @@ void ofApp::draw(){
     
     // Draw detections - EXACT same
     detectionManager.draw();
-    
-    // Draw pose detection overlays
-    poseManager.draw();
     
     // Draw GUI - EXACT same
     uiManager.draw();

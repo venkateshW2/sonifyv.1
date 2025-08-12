@@ -495,8 +495,7 @@ obj/osx/Release/src/main.o: src/main.cpp \
   ../../../addons/ofxMidi/src/ofxMidiOut.h \
   ../../../addons/ofxMidi/src/desktop/ofxRtMidiOut.h \
   ../../../addons/ofxMidi/src/ofxMidiClock.h \
-  ../../../addons/ofxMidi/src/ofxMidiTimecode.h src/ConfigManager.h \
-  src/PoseManager.h src/PoseStructures.h src/PoseDetectorWrapper.h
+  ../../../addons/ofxMidi/src/ofxMidiTimecode.h src/ConfigManager.h
 ../../../libs/openFrameworks/ofMain.h:
 ../../../libs/openFrameworks/utils/ofConstants.h:
 ../../../libs/glew/include/GL/glew.h:
@@ -1001,6 +1000,3 @@ src/CommunicationManager.h:
 ../../../addons/ofxMidi/src/ofxMidiClock.h:
 ../../../addons/ofxMidi/src/ofxMidiTimecode.h:
 src/ConfigManager.h:
-src/PoseManager.h:
-src/PoseStructures.h:
-src/PoseDetectorWrapper.h:

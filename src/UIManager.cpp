@@ -5,7 +5,6 @@
 #include "DetectionManager.h"
 #include "CommunicationManager.h"
 #include "ConfigManager.h"
-#include "PoseManager.h"
 
 UIManager::UIManager() {
     // EXACT COPY from working backup
@@ -32,7 +31,6 @@ UIManager::UIManager() {
     communicationManager = nullptr;
     commManager = nullptr;
     configManager = nullptr;
-    poseManager = nullptr;
 }
 
 UIManager::~UIManager() {
@@ -95,14 +93,13 @@ void UIManager::showResizeWarningDialog() {
     showResizeWarning_ = false;
 }
 
-void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr, PoseManager* poseMgr) {
+void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr) {
     videoManager = videoMgr;
     lineManager = lineMgr;
     detectionManager = detMgr;
     communicationManager = commMgr;
     commManager = commMgr;  // Alias for consistency with code
     configManager = confMgr;
-    poseManager = poseMgr;  // Initialize pose manager
 }
 
 // EXACT COPY from working backup
@@ -148,10 +145,6 @@ void UIManager::drawGUI() {
             }
             
             // Pose Detection Tab
-            if (ImGui::BeginTabItem("Pose Detection")) {
-                drawPoseDetectionTab();
-                ImGui::EndTabItem();
-            }
             
             ImGui::EndTabBar();
         }
@@ -317,7 +310,6 @@ void UIManager::drawMainControlsTab() {
         ImGui::Text("VideoManager: %s", videoManager ? "OK" : "NULL");
         ImGui::Text("DetectionManager: %s", detectionManager ? "OK" : "NULL");
         ImGui::Text("CommunicationManager: %s", commManager ? "OK" : "NULL");
-        ImGui::Text("PoseManager: %s", poseManager ? "OK" : "NULL");
     }
     
     // Configuration Section - EXACT COPY from working backup
@@ -1137,116 +1129,6 @@ void UIManager::drawDetectionClassesTab() {
     ImGui::TextWrapped("Detection will only include selected classes. Make sure detection is enabled (D key or checkbox in Main Controls tab).");
 }
 
-void UIManager::drawPoseDetectionTab() {
-    if (!poseManager) {
-        ImGui::Text("Pose Manager not available");
-        return;
-    }
-    
-    ImGui::Text("🧍 Human Pose Detection");
-    ImGui::Separator();
-    
-    // Main Controls Section
-    if (ImGui::CollapsingHeader("Pose Detection Controls", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // Enable/Disable toggle
-        bool poseEnabled = poseManager->isPoseDetectionEnabled();
-        if (ImGui::Checkbox("Enable Pose Detection", &poseEnabled)) {
-            poseManager->setPoseDetectionEnabled(poseEnabled);
-        }
-        
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Apple Vision Framework)");
-        
-        ImGui::Spacing();
-        
-        // Confidence threshold
-        float confidence = poseManager->getPoseConfidenceThreshold();
-        if (ImGui::SliderFloat("Confidence Threshold", &confidence, 0.1f, 0.9f, "%.2f")) {
-            poseManager->setPoseConfidenceThreshold(confidence);
-        }
-        
-        // Max people to detect
-        int maxPeople = poseManager->getMaxPeopleToDetect();
-        if (ImGui::SliderInt("Max People", &maxPeople, 1, 8)) {
-            poseManager->setMaxPeopleToDetect(maxPeople);
-        }
-    }
-    
-    // Visualization Controls Section
-    if (ImGui::CollapsingHeader("Visualization Settings")) {
-        bool showSkeleton = poseManager->getShowSkeletonOverlay();
-        if (ImGui::Checkbox("Show Skeleton Overlay", &showSkeleton)) {
-            poseManager->setShowSkeletonOverlay(showSkeleton);
-        }
-        
-        bool showLabels = poseManager->getShowPoseLabels();
-        if (ImGui::Checkbox("Show Pose Labels", &showLabels)) {
-            poseManager->setShowPoseLabels(showLabels);
-        }
-        
-        bool showTrails = poseManager->getShowKeypointTrails();
-        if (ImGui::Checkbox("Show Keypoint Trails", &showTrails)) {
-            poseManager->setShowKeypointTrails(showTrails);
-        }
-    }
-    
-    // Real-time Status Section
-    if (ImGui::CollapsingHeader("Real-time Status")) {
-        vector<PersonPose> currentPoses = poseManager->getCurrentPoses();
-        ImGui::Text("Detected People: %d", (int)currentPoses.size());
-        
-        if (currentPoses.size() > 0) {
-            ImGui::Spacing();
-            for (size_t i = 0; i < currentPoses.size() && i < 3; i++) {
-                const PersonPose& pose = currentPoses[i];
-                ImGui::Text("Person %d: %.1f%% confidence", 
-                           pose.personID, pose.overallConfidence * 100.0f);
-                ImGui::SameLine();
-                ImGui::TextColored(pose.isValid ? ImVec4(0, 1, 0, 1) : ImVec4(1, 0, 0, 1), 
-                                 pose.isValid ? "✓" : "✗");
-            }
-        }
-        
-        // Line crossing events
-        int crossingEvents = poseManager->getPoseCrossingEventsCount();
-        ImGui::Text("Total Pose Crossing Events: %d", crossingEvents);
-    }
-    
-    // Joint Reference Section
-    if (ImGui::CollapsingHeader("17-Joint Skeleton Reference")) {
-        ImGui::Columns(3, "JointColumns", false);
-        
-        ImGui::Text("Head Joints:");
-        ImGui::Text("• nose");
-        ImGui::Text("• leftEye, rightEye"); 
-        ImGui::Text("• leftEar, rightEar");
-        
-        ImGui::NextColumn();
-        
-        ImGui::Text("Upper Body:");
-        ImGui::Text("• leftShoulder, rightShoulder");
-        ImGui::Text("• leftElbow, rightElbow");
-        ImGui::Text("• leftWrist, rightWrist");
-        
-        ImGui::NextColumn();
-        
-        ImGui::Text("Lower Body:");
-        ImGui::Text("• leftHip, rightHip");
-        ImGui::Text("• leftKnee, rightKnee");
-        ImGui::Text("• leftAnkle, rightAnkle");
-        
-        ImGui::Columns(1);
-    }
-    
-    // System Information
-    if (ImGui::CollapsingHeader("System Information")) {
-        ImGui::Text("Framework: Apple Vision (VNDetectHumanBodyPoseRequest)");
-        ImGui::Text("Processing: Real-time with async detection");
-        ImGui::Text("Line Integration: ✓ Pose keypoints trigger MIDI events");
-        ImGui::Text("Multi-person: ✓ Up to 8 people simultaneously");
-        ImGui::Text("Color Coding: ✓ Each person gets unique skeleton color");
-    }
-}
 
 void UIManager::handleWindowResize(int width, int height) {
     ofLogNotice() << "UIManager: Window resized to " << width << "x" << height;

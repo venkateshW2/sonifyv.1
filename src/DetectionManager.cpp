@@ -2,6 +2,7 @@
 #include "VideoManager.h"
 #include "LineManager.h"
 #include "CommunicationManager.h"
+#include <algorithm>
 
 DetectionManager::DetectionManager() {
     // EXACT COPY from working backup
@@ -992,26 +993,26 @@ void DetectionManager::updateVehicleTrackingSafe() {
         
         // RESTORED: Proper vehicle tracking algorithm from working backup
         
-        // Update existing tracked objects with new detections
-        for (auto& vehicle : trackedVehicles) {  // Note: "vehicle" variable name kept for compatibility
+        // Update existing tracked vehicles with new detections
+        for (auto& vehicle : trackedVehicles) {
             vehicle.framesSinceLastSeen++;
             vehicle.hasMovement = false;
         }
         
-        // Try to match current detections with tracked objects
+        // Try to match current detections with tracked vehicles
         for (const auto& detection : detections) {
-            // Track ALL detected objects for line crossing (all 80 COCO classes)
-            // This includes: people, vehicles, animals, and objects
-            // Any detected object can trigger MIDI events when crossing lines
+            // Track any class that is currently selected for detection
+            bool isTrackable = std::find(selectedClassIds.begin(), selectedClassIds.end(), detection.classId) != selectedClassIds.end();
+            if (!isTrackable) continue;
             
             ofPoint detectionCenter = ofPoint(
                 detection.box.x + detection.box.width / 2,
                 detection.box.y + detection.box.height / 2
             );
             
-            // Find closest tracked object of the same type
+            // Find closest tracked vehicle
             int bestMatchIndex = -1;
-            float bestDistance = vehicleTrackingThreshold;  // Note: threshold name kept for compatibility
+            float bestDistance = vehicleTrackingThreshold;
             
             for (int i = 0; i < trackedVehicles.size(); i++) {
                 float distance = calculateDistance(detectionCenter, trackedVehicles[i].centerCurrent);
@@ -1022,8 +1023,8 @@ void DetectionManager::updateVehicleTrackingSafe() {
             }
             
             if (bestMatchIndex >= 0) {
-                // Update existing tracked object - CRITICAL FOR LINE CROSSING
-                TrackedVehicle& vehicle = trackedVehicles[bestMatchIndex];  // Note: variable name kept for compatibility
+                // Update existing vehicle - CRITICAL FOR LINE CROSSING
+                TrackedVehicle& vehicle = trackedVehicles[bestMatchIndex];
                 vehicle.previousBox = vehicle.currentBox;
                 vehicle.centerPrevious = vehicle.centerCurrent;  // CRITICAL: Save previous position
                 vehicle.currentBox = detection.box;

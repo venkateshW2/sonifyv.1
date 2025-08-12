@@ -12,7 +12,6 @@ ConfigManager::ConfigManager() {
     videoManager = nullptr;
     detectionManager = nullptr;
     commManager = nullptr;
-    poseManager = nullptr;
     
     configLoaded = false;
     configFilePath = "";
@@ -29,13 +28,12 @@ void ConfigManager::setup() {
 
 void ConfigManager::setManagers(UIManager* uiMgr, LineManager* lineMgr, 
                                 VideoManager* videoMgr, DetectionManager* detMgr,
-                                CommunicationManager* commMgr, PoseManager* poseMgr) {
+                                CommunicationManager* commMgr) {
     uiManager = uiMgr;
     lineManager = lineMgr;
     videoManager = videoMgr;
     detectionManager = detMgr;
     commManager = commMgr;
-    poseManager = poseMgr;
 }
 
 void ConfigManager::saveConfig() {
@@ -77,11 +75,6 @@ void ConfigManager::saveConfig() {
         json["communication"] = commJson;
     }
     
-    if (poseManager) {
-        ofxJSONElement poseJson;
-        poseManager->saveToJSON(poseJson);
-        json["pose"] = poseJson;
-    }
     
     // Add metadata
     json["version"] = "1.0";
@@ -137,9 +130,6 @@ void ConfigManager::loadConfig() {
         commManager->loadFromJSON(json["communication"]);
     }
     
-    if (poseManager && json.isMember("pose")) {
-        poseManager->loadFromJSON(json["pose"]);
-    }
     
     configLoaded = true;
     ofLogNotice() << "ConfigManager: Configuration loaded successfully";
@@ -167,9 +157,6 @@ void ConfigManager::setDefaultConfig() {
         commManager->setDefaults();
     }
     
-    if (poseManager) {
-        poseManager->setDefaults();
-    }
     
     ofLogNotice() << "ConfigManager: Default configuration applied";
 }

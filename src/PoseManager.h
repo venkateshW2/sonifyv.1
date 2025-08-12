@@ -19,7 +19,7 @@ public:
     void draw();
     
     // Pose detection control
-    void setPoseDetectionEnabled(bool enabled) { poseDetectionEnabled = enabled; }
+    void setPoseDetectionEnabled(bool enabled);
     bool isPoseDetectionEnabled() const { return poseDetectionEnabled; }
     void setPoseConfidenceThreshold(float threshold) { poseConfidenceThreshold = threshold; }
     float getPoseConfidenceThreshold() const { return poseConfidenceThreshold; }
@@ -53,6 +53,7 @@ private:
     // Pose detection system
     PoseDetectorWrapper poseDetector;
     bool poseDetectionEnabled;
+    bool poseDetectionInitialized;
     float poseConfidenceThreshold;
     int maxPeopleToDetect;
     std::vector<PersonPose> currentPoses;  // Store current detected poses

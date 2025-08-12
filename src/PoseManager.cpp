@@ -4,6 +4,7 @@
 
 PoseManager::PoseManager() {
     poseDetectionEnabled = false;
+    poseDetectionInitialized = false;
     poseConfidenceThreshold = 0.5f;
     maxPeopleToDetect = 8;
     
@@ -20,8 +21,13 @@ PoseManager::~PoseManager() {
 }
 
 void PoseManager::setup() {
-    setupPoseDetection();
-    ofLogNotice() << "PoseManager: Initialized";
+    // Only setup pose detection if enabled - performance optimization
+    if (poseDetectionEnabled) {
+        setupPoseDetection();
+        ofLogNotice() << "PoseManager: Pose detection initialized and enabled";
+    } else {
+        ofLogNotice() << "PoseManager: Initialized with pose detection disabled";
+    }
 }
 
 void PoseManager::update(ofPixels& videoFrame) {
@@ -187,8 +193,24 @@ void PoseManager::checkPoseLineCrossings() {
     }
 }
 
+void PoseManager::setPoseDetectionEnabled(bool enabled) {
+    poseDetectionEnabled = enabled;
+    
+    // Lazy initialization - only setup pose detection when first enabled
+    if (enabled && !poseDetectionInitialized) {
+        setupPoseDetection();
+        poseDetectionInitialized = true;
+        ofLogNotice() << "PoseManager: Pose detection system initialized and enabled";
+    } else if (enabled) {
+        ofLogNotice() << "PoseManager: Pose detection enabled";
+    } else {
+        ofLogNotice() << "PoseManager: Pose detection disabled";
+    }
+}
+
 void PoseManager::setDefaults() {
     poseDetectionEnabled = false;
+    poseDetectionInitialized = false;
     poseConfidenceThreshold = 0.5f;
     maxPeopleToDetect = 8;
     showSkeletonOverlay = true;
