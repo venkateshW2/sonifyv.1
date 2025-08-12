@@ -5,6 +5,7 @@
 #include "DetectionManager.h"
 #include "CommunicationManager.h"
 #include "ConfigManager.h"
+#include "PoseUDPReceiver.h"
 
 UIManager::UIManager() {
     // EXACT COPY from working backup
@@ -31,6 +32,8 @@ UIManager::UIManager() {
     communicationManager = nullptr;
     commManager = nullptr;
     configManager = nullptr;
+    poseUDPReceiver = nullptr;
+    poseDetectionEnabled = nullptr;
 }
 
 UIManager::~UIManager() {
@@ -93,13 +96,15 @@ void UIManager::showResizeWarningDialog() {
     showResizeWarning_ = false;
 }
 
-void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr) {
+void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr, PoseUDPReceiver* poseReceiver, bool* poseEnabled) {
     videoManager = videoMgr;
     lineManager = lineMgr;
     detectionManager = detMgr;
     communicationManager = commMgr;
     commManager = commMgr;  // Alias for consistency with code
     configManager = confMgr;
+    poseUDPReceiver = poseReceiver;
+    poseDetectionEnabled = poseEnabled;
 }
 
 // EXACT COPY from working backup
@@ -145,6 +150,10 @@ void UIManager::drawGUI() {
             }
             
             // Pose Detection Tab
+            if (ImGui::BeginTabItem("Pose Detection")) {
+                drawPoseDetectionTab();
+                ImGui::EndTabItem();
+            }
             
             ImGui::EndTabBar();
         }
@@ -1127,6 +1136,129 @@ void UIManager::drawDetectionClassesTab() {
     ImGui::Spacing();
     ImGui::TextWrapped("Select up to %d classes for detection. Use presets for quick selection, or choose individual classes.", maxSelectedClasses);
     ImGui::TextWrapped("Detection will only include selected classes. Make sure detection is enabled (D key or checkbox in Main Controls tab).");
+}
+
+void UIManager::drawPoseDetectionTab() {
+    // Pose Detection Settings
+    if (ImGui::CollapsingHeader("Pose Detection Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (poseDetectionEnabled && poseUDPReceiver) {
+            // Enable/Disable pose detection
+            if (ImGui::Checkbox("Enable Pose Detection", poseDetectionEnabled)) {
+                if (*poseDetectionEnabled) {
+                    // Start pose detection UDP receiver
+                    if (!poseUDPReceiver->isConnected()) {
+                        bool success = poseUDPReceiver->setup(8080, "localhost");
+                        if (success) {
+                            ofLogNotice("UIManager") << "Pose detection UDP receiver started";
+                        } else {
+                            ofLogError("UIManager") << "Failed to start pose detection UDP receiver";
+                            *poseDetectionEnabled = false;
+                        }
+                    }
+                } else {
+                    // Stop pose detection
+                    if (poseUDPReceiver->isConnected()) {
+                        poseUDPReceiver->close();
+                        ofLogNotice("UIManager") << "Pose detection UDP receiver stopped";
+                    }
+                }
+            }
+            
+            // Connection status
+            bool connected = poseUDPReceiver->isConnected();
+            ImGui::Text("UDP Status: %s", connected ? "Connected" : "Disconnected");
+            if (connected) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "●");
+            } else {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "●");
+            }
+            
+            // Confidence threshold
+            if (connected) {
+                float confidence = poseUDPReceiver->getConfidenceThreshold();
+                if (ImGui::SliderFloat("Confidence Threshold", &confidence, 0.1f, 0.9f, "%.2f")) {
+                    poseUDPReceiver->setConfidenceThreshold(confidence);
+                }
+                
+                ImGui::Text("UDP Port: 8080");
+                ImGui::Text("Host: localhost");
+            }
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Pose detection system not initialized");
+        }
+    }
+    
+    // Performance Stats
+    if (ImGui::CollapsingHeader("Performance Stats")) {
+        if (poseUDPReceiver && poseUDPReceiver->isConnected()) {
+            ImGui::Text("Frames Received: %d", poseUDPReceiver->getFramesReceived());
+            ImGui::Text("FPS: %.1f", poseUDPReceiver->getFPS());
+            ImGui::Text("Last Update: %.2fs ago", ofGetElapsedTimef() - poseUDPReceiver->getLastUpdateTime());
+            ImGui::Text("Status: %s", poseUDPReceiver->getStatusMessage().c_str());
+            
+            // Show current pose data
+            if (poseUDPReceiver->hasNewData()) {
+                auto poses = poseUDPReceiver->getCurrentPoses();
+                ImGui::Text("People Detected: %d", (int)poses.size());
+                
+                if (!poses.empty()) {
+                    ImGui::Separator();
+                    ImGui::Text("Pose Details:");
+                    for (size_t i = 0; i < std::min(poses.size(), (size_t)3); i++) {
+                        const auto& pose = poses[i];
+                        ImGui::Text("Person %d: %d landmarks (%.1f%% conf)", 
+                                   pose.personID, (int)pose.landmarks.size(), 
+                                   pose.overallConfidence * 100.0f);
+                    }
+                    if (poses.size() > 3) {
+                        ImGui::Text("... and %d more", (int)(poses.size() - 3));
+                    }
+                }
+            } else {
+                ImGui::Text("People Detected: 0");
+            }
+        } else {
+            ImGui::Text("No connection - stats unavailable");
+        }
+    }
+    
+    // MediaPipe Joint Reference
+    if (ImGui::CollapsingHeader("Joint Reference")) {
+        ImGui::Text("MediaPipe 33-Joint Pose Model:");
+        ImGui::Separator();
+        
+        ImGui::Text("Head & Face:");
+        ImGui::BulletText("0: nose, 1-2: eyes, 3-4: ears, 5-10: mouth/face");
+        
+        ImGui::Text("Upper Body:");
+        ImGui::BulletText("11-12: shoulders, 13-14: elbows, 15-16: wrists");
+        ImGui::BulletText("17-22: hands (thumbs, pinkies, index fingers)");
+        
+        ImGui::Text("Lower Body:");
+        ImGui::BulletText("23-24: hips, 25-26: knees, 27-28: ankles");
+        ImGui::BulletText("29-32: feet (heels, foot index)");
+        
+        ImGui::Spacing();
+        ImGui::TextWrapped("All joints can trigger line crossings for musical interaction. Higher confidence joints provide more reliable detection.");
+    }
+    
+    // System Instructions
+    if (ImGui::CollapsingHeader("Instructions")) {
+        ImGui::TextWrapped("1. Make sure MediaPipe pose server is running:");
+        ImGui::Text("   python bin/mediapipe_pose_server.py");
+        
+        ImGui::TextWrapped("2. Enable pose detection above to start receiving data");
+        
+        ImGui::TextWrapped("3. Draw lines in the video area - pose joints will trigger crossings");
+        
+        ImGui::TextWrapped("4. Pose crossings generate both OSC and MIDI events using the same musical system as vehicle crossings");
+        
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "New Creative Instrument:");
+        ImGui::TextWrapped("Pose detection adds human movement as a second creative instrument alongside vehicle detection. Use both together for rich multi-modal sonification.");
+    }
 }
 
 

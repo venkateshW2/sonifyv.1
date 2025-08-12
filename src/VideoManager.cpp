@@ -49,15 +49,15 @@ void VideoManager::setup() {
     // Try different common resolutions for better compatibility
     bool cameraSetup = false;
     
-    // Try HD 1280x720 first for high quality detection
-    if (camera.setup(1280, 720)) {
+    // Try 640x480 first (standard webcam resolution)
+    if (camera.setup(640, 480)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera set to HD 1280x720";
+        ofLogNotice() << "Camera set to 640x480 (standard resolution)";
     }
-    // Fallback to 640x480 if HD not supported
-    else if (camera.setup(640, 480)) {
+    // Try 640x640 as secondary option
+    else if (camera.setup(640, 640)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera fallback to 640x480";
+        ofLogNotice() << "Camera set to 640x640 (square format)";
     } 
     // Lower resolution fallback
     else if (camera.setup(320, 240)) {

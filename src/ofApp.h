@@ -9,6 +9,7 @@
 #include "UIManager.h"
 #include "CommunicationManager.h"
 #include "ConfigManager.h"
+#include "PoseUDPReceiver.h"
 
 class ofApp : public ofBaseApp{
 public:
@@ -41,7 +42,15 @@ private:
     CommunicationManager communicationManager;
     ConfigManager configManager;
     
+    // Pose detection via MediaPipe UDP (new creative instrument)
+    PoseUDPReceiver poseReceiver;
+    bool poseDetectionEnabled;
+    
     // Window resize management - EXACT COPY from working backup
     int originalWindowWidth;
     int originalWindowHeight;
+    
+    // Pose skeleton drawing
+    void drawPoseSkeletons();
+    void drawPoseSkeleton(const PersonPose& pose, ofColor color);
 };
