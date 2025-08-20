@@ -44,6 +44,13 @@ public:
     // Detection support - get pixels for CoreML detection
     ofPixels getCurrentPixels();
     
+    // USB Camera device management
+    vector<ofVideoDevice> getAvailableCameras();
+    void setCameraDevice(int deviceID);
+    int getCurrentCameraDevice() const { return currentCameraDeviceID; }
+    string getCurrentCameraName() const { return currentCameraName; }
+    void refreshCameraDevices();
+    
     // Video objects - EXACT same as working backup
     ofVideoGrabber camera;
     ofVideoPlayer videoPlayer;
@@ -66,6 +73,11 @@ public:
     float frameRequestInterval;
     int ipFrameSkip;
     int ipFrameCounter;
+    
+    // USB Camera device variables
+    vector<ofVideoDevice> availableCameras;
+    int currentCameraDeviceID;
+    string currentCameraName;
     
     // Configuration methods
     void saveToJSON(ofxJSONElement& json);

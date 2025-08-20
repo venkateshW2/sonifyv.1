@@ -5,16 +5,24 @@
       "oscEnabled" : true,
       "oscHost" : "127.0.0.1",
       "oscPort" : 12000,
-      "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1", "Logic Pro Virtual In" ]
+      "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1" ]
    },
    "detection" : {
-      "categoryEnabled" : [ false, true, false, false ],
-      "confidenceThreshold" : 0.5600000023841858,
+      "categoryEnabled" : [ true, false, false, false ],
+      "confidenceThreshold" : 0.3799999952316284,
       "currentPreset" : "Custom",
       "detectionFrameSkip" : 3,
       "displayScale" : 1,
       "enableDetection" : false,
       "enabledClasses" : [
+         false,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
          true,
          false,
          false,
@@ -25,14 +33,6 @@
          false,
          false,
          false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         true,
          false,
          false,
          false,
@@ -97,7 +97,7 @@
          false
       ],
       "maxSelectedClasses" : 15,
-      "selectedClassIds" : [ 17, 0 ],
+      "selectedClassIds" : [ 1, 2, 3, 4, 5, 6, 7, 8 ],
       "showDetections" : true
    },
    "lines" : {
@@ -105,13 +105,37 @@
          {
             "color" : {
                "b" : 0,
-               "g" : 128,
+               "g" : 255,
                "r" : 255
             },
             "durationType" : 0,
             "endPoint" : {
-               "x" : 316,
-               "y" : 48
+               "x" : 233,
+               "y" : 215
+            },
+            "fixedDuration" : 500,
+            "fixedVelocity" : 100,
+            "midiChannel" : 1,
+            "midiPortName" : "IAC Driver Bus 1",
+            "octave" : 4,
+            "randomizeNote" : false,
+            "scaleNoteIndex" : 2,
+            "startPoint" : {
+               "x" : 294,
+               "y" : 214
+            },
+            "velocityType" : 0
+         },
+         {
+            "color" : {
+               "b" : 255,
+               "g" : 255,
+               "r" : 0
+            },
+            "durationType" : 0,
+            "endPoint" : {
+               "x" : 426,
+               "y" : 93
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
@@ -121,8 +145,8 @@
             "randomizeNote" : true,
             "scaleNoteIndex" : 0,
             "startPoint" : {
-               "x" : 328,
-               "y" : 608
+               "x" : 368,
+               "y" : 93
             },
             "velocityType" : 0
          }
@@ -131,11 +155,13 @@
       "masterScale" : "Pentatonic",
       "showLines" : true
    },
-   "timestamp" : "2025-08-12-11-25-27-845",
+   "timestamp" : "2025-08-20-17-30-46-444",
    "ui" : null,
    "version" : "1.0",
    "video" : {
-      "currentVideoPath" : "/Users/justmac/Downloads/videos/newAnimal Running Video 1920x1080.mp4",
+      "currentCameraDeviceID" : 1,
+      "currentCameraName" : "Brio 100",
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/1-cars-train.mp4",
       "currentVideoSource" : 1,
       "frameRequestInterval" : 0.5,
       "ipCameraUrl" : "http://localhost:8080/video",

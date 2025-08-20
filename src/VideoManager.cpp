@@ -8,6 +8,10 @@ VideoManager::VideoManager() {
     currentVideoPath = "";
     currentVideoSource = CAMERA;  // Default to camera
     
+    // Initialize USB camera device variables
+    currentCameraDeviceID = 0;  // Default to first camera
+    currentCameraName = "Default Camera";
+    
     // Initialize IP camera configuration - EXACT COPY from working backup
     ipCameraUrl = "http://localhost:8080/video";  // USB forwarded IP Webcam URL
     ipCameraConnected = false;
@@ -29,6 +33,9 @@ VideoManager::~VideoManager() {
 }
 
 void VideoManager::setup() {
+    // Enumerate available cameras first
+    refreshCameraDevices();
+    
     // Try to load test video file first (optional) - EXACT COPY from working backup
     videoPlayer.load("test_video.mp4");
     if (videoPlayer.isLoaded()) {
@@ -44,30 +51,31 @@ void VideoManager::setup() {
         ofLogNotice() << "No test video found, will use camera. Press 'o' to open video file.";
     }
     
-    // Initialize camera at compatible resolution - EXACT COPY from working backup
+    // Initialize camera at compatible resolution with device ID support
     camera.setDesiredFrameRate(30);
+    camera.setDeviceID(currentCameraDeviceID);
     // Try different common resolutions for better compatibility
     bool cameraSetup = false;
     
     // Try HD 1280x720 first for high quality detection
     if (camera.setup(1280, 720)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera set to HD 1280x720";
+        ofLogNotice() << "Camera (" << currentCameraName << ") set to HD 1280x720";
     }
     // Fallback to 640x480 if HD not supported
     else if (camera.setup(640, 480)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera fallback to 640x480";
+        ofLogNotice() << "Camera (" << currentCameraName << ") fallback to 640x480";
     } 
     // Lower resolution fallback
     else if (camera.setup(320, 240)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera fallback to 320x240";
+        ofLogNotice() << "Camera (" << currentCameraName << ") fallback to 320x240";
     }
     // Last resort - let camera choose
     else if (camera.setup(0, 0)) {
         cameraSetup = true;
-        ofLogNotice() << "Camera auto-resolution: " << camera.getWidth() << "x" << camera.getHeight();
+        ofLogNotice() << "Camera (" << currentCameraName << ") auto-resolution: " << camera.getWidth() << "x" << camera.getHeight();
     }
     
     // Check if camera connected (keep fixed window size)
@@ -300,6 +308,8 @@ void VideoManager::saveToJSON(ofxJSONElement& json) {
     json["ipCameraUrl"] = ipCameraUrl;
     json["frameRequestInterval"] = frameRequestInterval;
     json["ipFrameSkip"] = ipFrameSkip;
+    json["currentCameraDeviceID"] = currentCameraDeviceID;
+    json["currentCameraName"] = currentCameraName;
 }
 
 void VideoManager::loadFromJSON(const ofxJSONElement& json) {
@@ -321,6 +331,12 @@ void VideoManager::loadFromJSON(const ofxJSONElement& json) {
     if (json.isMember("ipFrameSkip")) {
         ipFrameSkip = json["ipFrameSkip"].asInt();
     }
+    if (json.isMember("currentCameraDeviceID")) {
+        currentCameraDeviceID = json["currentCameraDeviceID"].asInt();
+    }
+    if (json.isMember("currentCameraName")) {
+        currentCameraName = json["currentCameraName"].asString();
+    }
     
     ofLogNotice() << "VideoManager: Configuration loaded";
 }
@@ -340,6 +356,8 @@ void VideoManager::setDefaults() {
     frameRequestInterval = 33.0f;
     ipFrameSkip = 1;
     ipFrameCounter = 0;
+    currentCameraDeviceID = 0;
+    currentCameraName = "Default Camera";
     
     ofLogNotice() << "VideoManager: Set to default values";
 }
@@ -396,7 +414,7 @@ bool VideoManager::trySetupCamera() {
     try {
         // Set desired camera resolution  
         camera.setDesiredFrameRate(30);
-        camera.setDeviceID(0);  // Use first available camera
+        camera.setDeviceID(currentCameraDeviceID);  // Use selected camera device
         
         // Try HD resolution first - EXACT COPY from working backup
         // Try HD first, then fallback resolutions
@@ -511,4 +529,43 @@ void VideoManager::disconnectIPCamera() {
     validateAndFixVideoSource();
     
     ofLogNotice() << "VideoManager: IP Camera disconnected";
+}
+
+// USB Camera device management methods
+vector<ofVideoDevice> VideoManager::getAvailableCameras() {
+    return availableCameras;
+}
+
+void VideoManager::refreshCameraDevices() {
+    availableCameras = camera.listDevices();
+    
+    ofLogNotice() << "VideoManager: Found " << availableCameras.size() << " camera devices:";
+    for (size_t i = 0; i < availableCameras.size(); i++) {
+        ofLogNotice() << "  [" << availableCameras[i].id << "] " << availableCameras[i].deviceName;
+        if (i == 0 && currentCameraDeviceID == 0) {
+            currentCameraName = availableCameras[i].deviceName;
+        }
+    }
+    
+    // Update current camera name if device ID is valid
+    if (currentCameraDeviceID < availableCameras.size()) {
+        currentCameraName = availableCameras[currentCameraDeviceID].deviceName;
+    }
+}
+
+void VideoManager::setCameraDevice(int deviceID) {
+    if (deviceID < 0 || deviceID >= availableCameras.size()) {
+        ofLogError() << "VideoManager: Invalid camera device ID: " << deviceID;
+        return;
+    }
+    
+    currentCameraDeviceID = deviceID;
+    currentCameraName = availableCameras[deviceID].deviceName;
+    
+    ofLogNotice() << "VideoManager: Switching to camera device [" << deviceID << "] " << currentCameraName;
+    
+    // Restart camera with new device
+    if (cameraConnected && currentVideoSource == CAMERA) {
+        handleCameraRestart();
+    }
 }

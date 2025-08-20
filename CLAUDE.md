@@ -498,7 +498,6 @@ string masterScale;         // "Major", "Minor", "Pentatonic", "Blues", "Chromat
 - **✅ Advanced UI**: Complete 4-tab interface (Main + MIDI + Detection + Pose)
 - **✅ Musical Intelligence**: Scale-based note selection and vehicle-type duration mapping
 - **✅ Pose Detection Infrastructure**: Complete pose detection system with line crossing integration
-- **🔄 Vision Framework**: Pending SIMD compatibility resolution for full pose detection
 
 ### Reference Documentation
 - **Original Implementation**: `sonifyv2_implementation_guide.md`
@@ -539,6 +538,508 @@ string masterScale;         // "Major", "Minor", "Pentatonic", "Blues", "Chromat
 - MIDI testing with multiple DAWs and ports
 - Configuration system updates for MIDI properties
 
+## 🚨 CURRENT CRITICAL ISSUES & NEXT IMPLEMENTATIONS
+
+### **Critical Issue: UDP Message Size Limitation** ⚠️
+
+**Problem**: MediaPipe multi-detection data exceeds UDP message size limits (65,507 bytes max).
+
+**Current Status**: 
+- Server generates: `P=273 H=15 F=273 S=274` detections per frame
+- All messages fail with `❌ UDP transmission error: [Errno 40] Message too long`
+- Even with compact format `[x,y,z]` arrays, combined detection data too large
+- No visual feedback reaching openFrameworks application
+
+**Root Cause**: 
+- Face detection: 34 landmarks × 3 coordinates = 102 floats
+- Segmentation: 32×32 mask = 1024 floats  
+- Combined JSON message size > 65KB UDP limit
+
+**Attempted Solutions**:
+1. ✅ Reduced face landmarks from 468 to 34 key points
+2. ✅ Downsampled segmentation masks to 32×32
+3. ✅ Ultra-compact format: `[x,y,z]` arrays instead of objects
+4. ✅ Separate UDP messages per detection type
+5. ❌ Still exceeds UDP limits
+
+**Next Solution Options**:
+1. **TCP Streaming** (Reliable, ordered, no size limit)
+2. **Shared Memory** (Fastest, local-only)
+3. **Message Fragmentation** (Complex, UDP-based)
+4. **Detection Throttling** (Reduce data volume)
+5. **Selective Data Streaming** (Priority-based)
+
+### **Next Major Implementation: Python Server Management** 🎯
+
+**Objective**: Integrate MediaPipe server process management directly into openFrameworks application.
+
+**Current Workflow Pain Points**:
+- Manual server startup with `./run_sonify.sh`
+- Separate terminal required for server monitoring
+- No automatic cleanup on app termination
+- UDP connection failures require manual restart
+- Poor user experience for non-technical users
+
+**Proposed Architecture**:
+
+#### **PythonServerManager Class**
+```cpp
+class PythonServerManager {
+public:
+    // Process Management
+    void startServer();           // Launch Python server subprocess
+    void stopServer();            // Terminate server gracefully  
+    void restartServer();         // Stop + Start cycle
+    bool isServerRunning();       // Process status monitoring
+    std::string getServerStatus(); // Human-readable status
+    
+    // Configuration
+    void setAutoStart(bool enable);     // Auto-launch on app startup
+    void setServerCommand(std::string cmd); // Custom server command
+    void setPort(int port);             // UDP port configuration
+    
+    // Monitoring
+    std::string getServerLogs();        // Real-time log access
+    float getServerCPU();               // Resource monitoring
+    int getDetectionRate();             // Performance metrics
+    
+private:
+    std::unique_ptr<ofProcess> serverProcess;
+    bool autoStartEnabled = true;
+    std::string pythonPath = "$HOME/miniconda3/bin/python";
+    std::string serverScript = "bin/mediapipe_multi_server.py";
+    int udpPort = 8888;
+    std::thread monitorThread;
+};
+```
+
+#### **Integration Points**
+1. **ofApp::setup()** - Auto-start server if enabled
+2. **ofApp::keyPressed()** - Manual controls ('p' = toggle server)
+3. **UIManager** - GUI server control panel
+4. **CommunicationManager** - Centralized process monitoring
+5. **ofApp::exit()** - Graceful server shutdown
+
+#### **Enhanced GUI Features**
+- **Server Control Tab** with:
+  - ▶️ Start/⏹️ Stop/🔄 Restart buttons
+  - 🟢/🔴 Real-time status indicator
+  - ⚙️ Auto-start configuration toggle
+  - 📜 Live server log viewer
+  - 📊 Performance metrics display
+  - 🔧 Server configuration panel
+
+#### **Implementation Benefits**:
+- **Unified Control**: Everything managed from one application
+- **Better UX**: Click-to-start, no terminal required
+- **Process Monitoring**: Automatic restart on crashes
+- **Resource Management**: Proper cleanup and error handling
+- **Configuration**: Persistent server settings
+- **Debugging**: Integrated log viewing and diagnostics
+
+#### **Technical Implementation**
+```cpp
+// Auto-start in setup
+void ofApp::setup() {
+    pythonServerManager.setup();
+    if (pythonServerManager.getAutoStart()) {
+        pythonServerManager.startServer();
+    }
+}
+
+// Manual controls
+void ofApp::keyPressed(int key) {
+    if (key == 'p' || key == 'P') {
+        pythonServerManager.toggleServer();
+    }
+}
+
+// Graceful cleanup
+void ofApp::exit() {
+    pythonServerManager.stopServer();
+    configManager.saveConfig();
+}
+```
+
+#### **Configuration Integration**
+```json
+{
+    "pythonServer": {
+        "autoStart": true,
+        "pythonPath": "$HOME/miniconda3/bin/python",
+        "serverScript": "bin/mediapipe_multi_server.py", 
+        "udpPort": 8888,
+        "detectionTypes": ["pose", "hands", "face", "segmentation"],
+        "confidence": 0.3,
+        "restartOnCrash": true
+    }
+}
+```
+
+### **Alternative UDP Communication Solutions**
+
+#### **1. TCP Streaming** (Recommended)
+```python
+# Server: TCP socket with JSON streaming
+import socket, json
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.send(json.dumps(data).encode() + b'\n')  # Newline delimiter
+```
+
+```cpp  
+// Client: ofxTCPClient for streaming JSON
+ofxTCPClient tcpClient;
+string jsonLine = tcpClient.receiveRaw();  // Read until newline
+```
+
+**Benefits**: No size limits, reliable delivery, connection status
+**Drawbacks**: Slightly higher latency than UDP
+
+#### **2. Shared Memory** (Fastest)
+```python
+# Server: Write to shared memory buffer
+import mmap, struct
+shared_data = mmap.mmap(-1, 1024*1024, "SonifyDetection")
+shared_data.write(struct.pack('f'*len(coords), *coords))
+```
+
+```cpp
+// Client: Read from shared memory
+#include <sys/mman.h>
+void* shared_mem = mmap(NULL, 1024*1024, PROT_READ, MAP_SHARED, fd, 0);
+```
+
+**Benefits**: Extremely fast, no network overhead
+**Drawbacks**: Complex setup, platform-specific, local-only
+
+#### **3. Message Fragmentation**
+```python
+# Split large messages into chunks
+def send_fragmented(data, max_size=60000):
+    json_str = json.dumps(data)
+    chunks = [json_str[i:i+max_size] for i in range(0, len(json_str), max_size)]
+    for i, chunk in enumerate(chunks):
+        packet = {"fragment": i, "total": len(chunks), "data": chunk}
+        sock.sendto(json.dumps(packet).encode(), address)
+```
+
+**Benefits**: Uses existing UDP infrastructure
+**Drawbacks**: Complex reassembly, potential packet loss
+
+#### **4. Detection Throttling**
+```python
+# Send only every Nth detection or on movement threshold
+def should_send_frame(current_data, last_data, threshold=0.1):
+    if not last_data: return True
+    movement = calculate_movement_delta(current_data, last_data)
+    return movement > threshold
+```
+
+**Benefits**: Reduces network load, maintains responsiveness
+**Drawbacks**: May miss rapid movements
+
+## 🎵 NEXT MAJOR MILESTONE: ADVANCED TEMPO & SCALE SYSTEM
+
+### 🎯 **PHASE 1: TEMPO-SYNCHRONIZED RANDOMIZATION SYSTEM**
+
+#### **Requirements Specification**
+- **Global Tempo**: Master BPM (40-200 BPM range) affects entire system
+- **Per-Line Choice**: Each line can enable/disable tempo sync individually
+- **Quantization**: Both gradual transition AND hard snap modes
+- **Swing Support**: Adjustable swing timing ratios
+- **Beat Snapping**: Snaps to closest beat when vehicle crosses line
+- **Trigger Source**: Tempo only affects random note selection - triggers remain detection/line crossing
+
+#### **Technical Implementation Tasks**
+
+##### **Task 1.1: TempoManager Class**
+```cpp
+class TempoManager {
+private:
+    float globalBPM = 120.0f;                    // Master tempo (40-200 BPM)
+    float subdivisionBeats = 4.0f;               // 4=quarter, 8=eighth, 16=sixteenth notes
+    float swingRatio = 0.5f;                     // 0.5=straight, 0.67=swing feel
+    float startTime = 0.0f;                      // Reference start time
+    
+public:
+    // Core tempo methods
+    float getBPM() const { return globalBPM; }
+    void setBPM(float bpm) { globalBPM = ofClamp(bpm, 40.0f, 200.0f); }
+    float getSubdivision() const { return subdivisionBeats; }
+    void setSubdivision(float beats) { subdivisionBeats = beats; }
+    float getSwingRatio() const { return swingRatio; }
+    void setSwingRatio(float ratio) { swingRatio = ofClamp(ratio, 0.5f, 0.75f); }
+    
+    // Beat calculation methods
+    float getCurrentBeat(float currentTime);
+    float getClosestBeatTime(float currentTime);
+    bool isOnBeat(float currentTime, float tolerance = 0.05f);
+    float getNextBeatTime(float currentTime);
+    int getBeatIndexForTime(float currentTime);
+};
+```
+
+##### **Task 1.2: Per-Line Tempo Settings**
+```cpp
+// Extend MidiLine structure in LineManager.h
+struct MidiLine {
+    // Existing MIDI properties...
+    
+    // NEW: Tempo-based randomization
+    bool enableTempoSync = true;              // Enable/disable tempo sync for this line
+    enum QuantizeMode { HARD_SNAP, GRADUAL_TRANSITION } quantizeMode = HARD_SNAP;
+    float quantizeStrength = 1.0f;            // 0.0 = no quantization, 1.0 = full quantization
+    int randomSeed = 0;                       // Per-line consistent randomization seed
+    float lastBeatTime = 0.0f;                // Last quantized beat for this line
+    int lastRandomNoteIndex = 0;              // Last selected random note
+    
+    // Scale degree weighting for musical randomness
+    vector<float> scaleDegreeWeights = {1.5f, 0.8f, 1.2f, 0.9f, 1.4f, 0.9f, 0.7f}; // Major scale weights
+};
+```
+
+##### **Task 1.3: Musical Randomization Algorithm**
+```cpp
+// Replace simple rand() with intelligent musical randomization
+int LineManager::getTempoSyncedRandomNote(int lineIndex, float currentTime) {
+    const MidiLine& line = lines[lineIndex];
+    TempoManager* tempo = getTempoManager(); // Get global tempo manager
+    
+    if (!line.enableTempoSync) {
+        // Fallback to immediate randomization
+        return getImmediateRandomNote(lineIndex);
+    }
+    
+    // Get quantized beat time
+    float closestBeatTime = tempo->getClosestBeatTime(currentTime);
+    int beatIndex = tempo->getBeatIndexForTime(closestBeatTime);
+    
+    // Use beat index + line seed for consistent randomization within beat
+    srand(beatIndex * 1000 + line.randomSeed);
+    
+    // Apply scale degree weighting for musical randomness
+    vector<int> scaleIntervals = getScaleIntervals(masterScale);
+    vector<float> weights = line.scaleDegreeWeights;
+    
+    // Weighted random selection
+    int selectedIndex = weightedRandomSelection(weights);
+    
+    return getMidiNoteFromScale(selectedIndex, line.octave);
+}
+
+int LineManager::weightedRandomSelection(const vector<float>& weights) {
+    float totalWeight = 0.0f;
+    for (float weight : weights) totalWeight += weight;
+    
+    float randomValue = (rand() / (float)RAND_MAX) * totalWeight;
+    float currentWeight = 0.0f;
+    
+    for (int i = 0; i < weights.size(); i++) {
+        currentWeight += weights[i];
+        if (randomValue <= currentWeight) return i;
+    }
+    return 0; // Fallback to root note
+}
+```
+
+##### **Task 1.4: Integration with Line Crossing System**
+```cpp
+// Update line crossing detection to use tempo-synchronized randomization
+// In CommunicationManager or wherever line crossings are detected:
+
+void onLineCrossing(int lineIndex, float crossingTime) {
+    if (lines[lineIndex].randomizeNote) {
+        // NEW: Use tempo-synchronized randomization instead of immediate rand()
+        int midiNote = lineManager->getTempoSyncedRandomNote(lineIndex, crossingTime);
+        sendMIDINote(midiNote, lineIndex);
+    } else {
+        // Use fixed note selection as before
+        int midiNote = lineManager->getMidiNoteFromMasterScale(lineIndex);
+        sendMIDINote(midiNote, lineIndex);
+    }
+}
+```
+
+##### **Task 1.5: Tempo UI Controls**
+```cpp
+// Add to UIManager.cpp in MIDI Settings tab:
+
+void UIManager::drawTempoControls() {
+    if (ImGui::CollapsingHeader("Master Tempo System")) {
+        TempoManager* tempo = getTempoManager();
+        
+        // BPM Control
+        float bpm = tempo->getBPM();
+        if (ImGui::SliderFloat("BPM", &bpm, 40.0f, 200.0f, "%.1f BPM")) {
+            tempo->setBPM(bpm);
+        }
+        
+        // Subdivision Control
+        float subdivision = tempo->getSubdivision();
+        const char* subdivisionLabels[] = {"Whole", "Half", "Quarter", "Eighth", "Sixteenth"};
+        int subdivisionIndex = (int)log2(subdivision);
+        if (ImGui::Combo("Subdivision", &subdivisionIndex, subdivisionLabels, 5)) {
+            tempo->setSubdivision(pow(2, subdivisionIndex));
+        }
+        
+        // Swing Control
+        float swing = tempo->getSwingRatio();
+        if (ImGui::SliderFloat("Swing", &swing, 0.5f, 0.75f, "%.2f")) {
+            tempo->setSwingRatio(swing);
+        }
+        
+        // Beat Indicator (visual feedback)
+        float currentBeat = tempo->getCurrentBeat(ofGetElapsedTimef());
+        ImGui::Text("Current Beat: %.2f", currentBeat);
+        
+        // Beat visualization dots
+        int beatIndex = (int)currentBeat % 4;
+        for (int i = 0; i < 4; i++) {
+            if (i > 0) ImGui::SameLine();
+            ImVec4 color = (i == beatIndex) ? ImVec4(1,0,0,1) : ImVec4(0.3f,0.3f,0.3f,1);
+            ImGui::TextColored(color, "●");
+        }
+    }
+}
+
+void UIManager::drawPerLineTempoControls(LineManager::MidiLine* selectedLine) {
+    if (selectedLine && ImGui::CollapsingHeader("Tempo Sync Settings")) {
+        // Enable/disable tempo sync
+        ImGui::Checkbox("Enable Tempo Sync", &selectedLine->enableTempoSync);
+        
+        if (selectedLine->enableTempoSync) {
+            // Quantization mode
+            const char* quantizeModes[] = {"Hard Snap", "Gradual Transition"};
+            int mode = (int)selectedLine->quantizeMode;
+            if (ImGui::Combo("Quantize Mode", &mode, quantizeModes, 2)) {
+                selectedLine->quantizeMode = (LineManager::MidiLine::QuantizeMode)mode;
+            }
+            
+            // Quantization strength
+            ImGui::SliderFloat("Quantize Strength", &selectedLine->quantizeStrength, 0.0f, 1.0f, "%.2f");
+            
+            // Random seed
+            ImGui::InputInt("Random Seed", &selectedLine->randomSeed);
+            ImGui::SameLine();
+            if (ImGui::Button("🎲")) {
+                selectedLine->randomSeed = rand() % 1000;
+            }
+            
+            // Scale degree weights (advanced)
+            if (ImGui::TreeNode("Scale Degree Weights (Advanced)")) {
+                vector<string> scaleNotes = lineManager->getScaleNoteNames();
+                for (int i = 0; i < min(scaleNotes.size(), selectedLine->scaleDegreeWeights.size()); i++) {
+                    string label = scaleNotes[i] + " Weight";
+                    ImGui::SliderFloat(label.c_str(), &selectedLine->scaleDegreeWeights[i], 0.1f, 2.0f, "%.2f");
+                }
+                if (ImGui::Button("Reset to Musical Defaults")) {
+                    // Root and fifth emphasized, leading tone de-emphasized
+                    selectedLine->scaleDegreeWeights = {1.5f, 0.8f, 1.2f, 0.9f, 1.4f, 0.9f, 0.7f};
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
+}
+```
+
+### 🎯 **PHASE 2: EXTENDED SCALE SYSTEM WITH MICROTONALITY**
+
+#### **Task 2.1: Scala File Support**
+```cpp
+class ScalaManager {
+private:
+    struct ScalaScale {
+        string name;
+        string description;
+        int noteCount;
+        vector<float> cents;           // Intervals in cents from root
+        vector<int> midiNotes;        // Closest MIDI notes for each degree
+        vector<int> pitchBends;       // Pitch bend values for microtonality
+        bool isMicrotonal = false;
+    };
+    
+    map<string, ScalaScale> scales;
+    
+public:
+    bool loadScalaFile(const string& filepath);
+    vector<string> getAvailableScales();
+    ScalaScale getScale(const string& name);
+    void loadBuiltinScales();  // Load curated collection
+    
+    // Convert cents to MIDI note + pitch bend
+    pair<int, int> centsToMidiPitchBend(float cents, int pitchBendRange = 2);
+};
+```
+
+#### **Task 2.2: Microtonal MIDI Output**
+```cpp
+// Enhanced MIDI note sending with pitch bend support
+struct MicrotonalNote {
+    int midiNote;        // Base MIDI note number
+    int pitchBend;       // Pitch bend value (-8192 to +8191)
+    int velocity;
+    int channel;
+    float duration;
+};
+
+void CommunicationManager::sendMicrotonalMIDI(const MicrotonalNote& note, const string& portName) {
+    ofxMidiOut* midiOut = getMidiOut(portName);
+    if (!midiOut) return;
+    
+    // Send pitch bend first (simultaneously with note)
+    midiOut->sendPitchBend(note.channel, note.pitchBend);
+    
+    // Send note on
+    midiOut->sendNoteOn(note.channel, note.midiNote, note.velocity);
+    
+    // Schedule note off + pitch bend reset
+    scheduleMidiOff(note.midiNote, note.channel, note.duration, portName);
+}
+
+void CommunicationManager::scheduleMidiOff(int note, int channel, float duration, const string& portName) {
+    // Use threading or timer to send note off + reset pitch bend to 0
+    thread([=]() {
+        this_thread::sleep_for(chrono::milliseconds((int)(duration)));
+        ofxMidiOut* midiOut = getMidiOut(portName);
+        if (midiOut) {
+            midiOut->sendNoteOff(channel, note, 0);
+            midiOut->sendPitchBend(channel, 0);  // Reset pitch bend to 0
+        }
+    }).detach();
+}
+```
+
+#### **Task 2.3: Built-in Scale Collection**
+```cpp
+void ScalaManager::loadBuiltinScales() {
+    // Western traditional scales
+    addScale("Major", {0, 200, 400, 500, 700, 900, 1100});  // Standard major
+    addScale("Natural Minor", {0, 200, 300, 500, 700, 800, 1000});
+    addScale("Harmonic Minor", {0, 200, 300, 500, 700, 800, 1100});
+    addScale("Melodic Minor", {0, 200, 300, 500, 700, 900, 1100});
+    
+    // World music scales
+    addScale("Maqam Hijaz", {0, 100, 400, 500, 700, 800, 1100});  // Middle Eastern
+    addScale("Raga Bilaval", {0, 200, 400, 500, 700, 900, 1100});  // Indian
+    addScale("Hirajoshi", {0, 200, 300, 700, 800});  // Japanese
+    addScale("Hungarian Gypsy", {0, 200, 300, 600, 700, 800, 1100});
+    
+    // Microtonal scales
+    addScale("19-TET Chromatic", generateEqualTemperament(19, 1200));  // 19 equal divisions
+    addScale("31-TET Chromatic", generateEqualTemperament(31, 1200));  // 31 equal divisions
+    addScale("Just Intonation Major", {0, 204, 386, 498, 702, 884, 1088});  // Pure ratios
+}
+```
+
+### **Implementation Priority:**
+1. **Phase 1 Complete**: Tempo system (Tasks 1.1-1.5)
+2. **Phase 2 Complete**: Extended scales with microtonality (Tasks 2.1-2.3)
+
+### **Configuration Integration:**
+All new settings (BPM, swing, per-line tempo settings, selected scales) will be saved/loaded with existing JSON configuration system.
+
 ---
-*Last Updated: 2025-08-10*  
-*Status: ✅ **POSE DETECTION SYSTEM INTEGRATED** - Complete infrastructure with stub implementation, Vision framework ready for activation*
+
+*Last Updated: 2025-08-20*  
+*Status: ✅ **PRODUCTION READY** - Core highway sonification system complete with USB camera support, professional UI, and comprehensive MIDI system. Next: Advanced tempo synchronization + extended scale system with microtonality support*

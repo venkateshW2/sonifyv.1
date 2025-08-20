@@ -4,7 +4,7 @@
 #include "VideoManager.h"
 #include "DetectionManager.h"
 #include "CommunicationManager.h"
-#include "PoseManager.h"
+
 
 ConfigManager::ConfigManager() {
     uiManager = nullptr;

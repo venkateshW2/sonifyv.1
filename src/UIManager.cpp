@@ -246,6 +246,46 @@ void UIManager::drawMainControlsTab() {
         }
     }
     
+    // USB Camera Selection Section
+    if (ImGui::CollapsingHeader("USB Camera Selection")) {
+        if (videoManager) {
+            // Display current camera
+            ImGui::Text("Current Camera: %s (ID: %d)", 
+                       videoManager->getCurrentCameraName().c_str(),
+                       videoManager->getCurrentCameraDevice());
+            
+            if (ImGui::Button("Refresh Camera Devices")) {
+                videoManager->refreshCameraDevices();
+            }
+            ImGui::SameLine();
+            
+            // Camera device dropdown
+            vector<ofVideoDevice> cameras = videoManager->getAvailableCameras();
+            if (!cameras.empty()) {
+                // Create combo box items
+                vector<const char*> cameraNames;
+                for (const auto& cam : cameras) {
+                    cameraNames.push_back(cam.deviceName.c_str());
+                }
+                
+                int currentCamera = videoManager->getCurrentCameraDevice();
+                if (ImGui::Combo("Camera Device", &currentCamera, cameraNames.data(), cameraNames.size())) {
+                    videoManager->setCameraDevice(currentCamera);
+                }
+                
+                // Show camera details
+                if (currentCamera >= 0 && currentCamera < cameras.size()) {
+                    ImGui::Text("Device Details:");
+                    ImGui::Text("  Name: %s", cameras[currentCamera].deviceName.c_str());
+                    ImGui::Text("  ID: %d", cameras[currentCamera].id);
+                    ImGui::Text("  Available: %s", cameras[currentCamera].bAvailable ? "Yes" : "No");
+                }
+            } else {
+                ImGui::Text("No cameras detected");
+            }
+        }
+    }
+    
     // IP Camera Settings Section - EXACT COPY from working backup
     if (ImGui::CollapsingHeader("IP Camera Settings")) {
         if (videoManager) {
