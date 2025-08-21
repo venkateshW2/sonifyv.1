@@ -531,9 +531,9 @@ void LineManager::loadFromJSON(const ofxJSONElement& json) {
             if (lineJson.isMember("scaleDegreeWeights")) {
                 const ofxJSONElement& weightsJson = lineJson["scaleDegreeWeights"];
                 line.scaleDegreeWeights.clear();
-                for (int w = 0; w < weightsJson.size(); w++) {
-                    if (weightsJson.isMember(ofToString(w))) {
-                        line.scaleDegreeWeights.push_back(weightsJson[ofToString(w)].asFloat());
+                if (weightsJson.isArray()) {
+                    for (int w = 0; w < weightsJson.size(); w++) {
+                        line.scaleDegreeWeights.push_back(weightsJson[w].asFloat());
                     }
                 }
                 // Ensure we have at least default weights
