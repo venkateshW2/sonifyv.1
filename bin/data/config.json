@@ -8,28 +8,28 @@
       "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1" ]
    },
    "detection" : {
-      "categoryEnabled" : [ true, false, false, false ],
+      "categoryEnabled" : [ false, false, false, false ],
       "confidenceThreshold" : 0.3799999952316284,
       "currentPreset" : "Custom",
       "detectionFrameSkip" : 3,
       "displayScale" : 1,
-      "enableDetection" : false,
+      "enableDetection" : true,
       "enabledClasses" : [
          false,
-         true,
-         true,
-         true,
-         true,
-         true,
-         true,
-         true,
-         true,
          false,
          false,
          false,
          false,
          false,
          false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         true,
          false,
          false,
          false,
@@ -97,7 +97,7 @@
          false
       ],
       "maxSelectedClasses" : 15,
-      "selectedClassIds" : [ 1, 2, 3, 4, 5, 6, 7, 8 ],
+      "selectedClassIds" : [ 14 ],
       "showDetections" : true
    },
    "lines" : {
@@ -106,62 +106,57 @@
             "color" : {
                "b" : 0,
                "g" : 255,
-               "r" : 255
+               "r" : 128
             },
             "durationType" : 0,
+            "enableTempoSync" : true,
             "endPoint" : {
-               "x" : 233,
-               "y" : 215
+               "x" : 639,
+               "y" : 341
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
+            "lastBeatTime" : 0,
+            "lastRandomNoteIndex" : 0,
             "midiChannel" : 1,
             "midiPortName" : "IAC Driver Bus 1",
             "octave" : 4,
-            "randomizeNote" : false,
-            "scaleNoteIndex" : 2,
-            "startPoint" : {
-               "x" : 294,
-               "y" : 214
-            },
-            "velocityType" : 0
-         },
-         {
-            "color" : {
-               "b" : 255,
-               "g" : 255,
-               "r" : 0
-            },
-            "durationType" : 0,
-            "endPoint" : {
-               "x" : 426,
-               "y" : 93
-            },
-            "fixedDuration" : 500,
-            "fixedVelocity" : 100,
-            "midiChannel" : 1,
-            "midiPortName" : "IAC Driver Bus 1",
-            "octave" : 4,
+            "quantizeMode" : 0,
+            "quantizeStrength" : 1,
+            "randomSeed" : 0,
             "randomizeNote" : true,
+            "scaleDegreeWeights" : [
+               1.5,
+               1.370000004768372,
+               0.8999999761581421,
+               0.5699999928474426,
+               1.399999976158142
+            ],
             "scaleNoteIndex" : 0,
             "startPoint" : {
-               "x" : 368,
-               "y" : 93
+               "x" : 15,
+               "y" : 339
             },
             "velocityType" : 0
          }
       ],
-      "masterRootNote" : 5,
+      "masterRootNote" : 8,
       "masterScale" : "Pentatonic",
       "showLines" : true
    },
-   "timestamp" : "2025-08-20-17-30-46-444",
+   "tempo" : {
+      "globalBPM" : 129,
+      "isRunning" : true,
+      "subdivisionBeats" : 1,
+      "swingRatio" : 0.5099999904632568
+   },
+   "timestamp" : "2025-08-20-20-30-38-055",
    "ui" : null,
    "version" : "1.0",
    "video" : {
       "currentCameraDeviceID" : 1,
       "currentCameraName" : "Brio 100",
-      "currentVideoPath" : "/Users/justmac/Downloads/videos/1-cars-train.mp4",
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/newBird Flying 4K Video.mp4",
       "currentVideoSource" : 1,
       "frameRequestInterval" : 0.5,
       "ipCameraUrl" : "http://localhost:8080/video",

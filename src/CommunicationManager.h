@@ -33,6 +33,13 @@ public:
     void sendMIDILineCrossing(int lineId, const string& vehicleType, float confidence, float speed);
     void sendTestMIDINote();
     
+    // Microtonal MIDI support
+    void sendMIDIPitchBend(int pitchBend, int channel);
+    void sendMIDIControlChange(int controller, int value, int channel);
+    void sendMicrotonalNote(int baseNote, int pitchBend, int velocity, int channel);
+    void sendMicrotonalNoteOff(int baseNote, int channel);
+    void resetPitchBend(int channel);
+    
     // Configuration methods
     void saveToJSON(ofxJSONElement& json);
     void loadFromJSON(const ofxJSONElement& json);
@@ -40,6 +47,7 @@ public:
     
     // Manager connections
     void setManagers(class LineManager* lineMgr) { lineManager = lineMgr; }
+    void setScaleManager(class ScaleManager* scaleMgr) { scaleManager = scaleMgr; }
     
     // UI Manager methods for MIDI port selection
     vector<string> getMidiPortNames() const { return midiPortNames; }
@@ -90,4 +98,5 @@ private:
     string findClosestMidiPort(const string& originalPort);
     
     class LineManager* lineManager;
+    class ScaleManager* scaleManager;
 };

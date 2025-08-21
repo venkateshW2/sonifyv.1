@@ -9,6 +9,8 @@
 #include "UIManager.h"
 #include "CommunicationManager.h"
 #include "ConfigManager.h"
+#include "TempoManager.h"
+#include "ScaleManager.h"
 
 class ofApp : public ofBaseApp{
 public:
@@ -40,6 +42,8 @@ private:
     UIManager uiManager;
     CommunicationManager communicationManager;
     ConfigManager configManager;
+    TempoManager tempoManager;
+    ScaleManager scaleManager;
     
     // Window resize management - EXACT COPY from working backup
     int originalWindowWidth;

@@ -29,10 +29,26 @@ public:
         VelocityType velocityType;
         int fixedVelocity;      // 0-127 (default 100)
         
-        // Constructor with sensible defaults - EXACT COPY
+        // NEW: Tempo-based randomization settings
+        bool enableTempoSync = true;                    // Enable/disable tempo sync for this line
+        enum QuantizeMode { HARD_SNAP, GRADUAL_TRANSITION };
+        QuantizeMode quantizeMode = HARD_SNAP;          // Quantization behavior
+        float quantizeStrength = 1.0f;                  // 0.0 = no quantization, 1.0 = full quantization
+        int randomSeed = 0;                             // Per-line consistent randomization seed
+        float lastBeatTime = 0.0f;                      // Last quantized beat for this line
+        int lastRandomNoteIndex = 0;                    // Last selected random note
+        
+        // Scale degree weighting for musical randomness
+        vector<float> scaleDegreeWeights = {1.5f, 0.8f, 1.2f, 0.9f, 1.4f, 0.9f, 0.7f}; // Major scale weights
+        
+        // Constructor with sensible defaults
         MidiLine() : scaleNoteIndex(0), randomizeNote(true), octave(4), midiChannel(1), 
                      midiPortName(""), durationType(DURATION_FIXED), fixedDuration(500),
-                     velocityType(VELOCITY_FIXED), fixedVelocity(100) {}
+                     velocityType(VELOCITY_FIXED), fixedVelocity(100) {
+            // Initialize scale degree weights for Major scale (root and fifth emphasized)
+            scaleDegreeWeights = {1.5f, 0.8f, 1.2f, 0.9f, 1.4f, 0.9f, 0.7f};
+            randomSeed = rand() % 1000; // Random seed for this line
+        }
     };
 
     LineManager();
@@ -77,6 +93,12 @@ public:
     int getMidiNoteFromMasterScale(int lineIndex);
     void initializeNewLineDefaults(MidiLine& line);
     
+    // NEW: Tempo-synchronized randomization methods
+    int getTempoSyncedRandomNote(int lineIndex, float currentTime);
+    int getImmediateRandomNote(int lineIndex);  // Fallback for non-tempo mode
+    int weightedRandomSelection(const vector<float>& weights);
+    void setTempoManager(class TempoManager* tempoMgr) { tempoManager = tempoMgr; }
+    
     // Window resize - EXACT same as working backup
     void rescaleLines(int oldWidth, int oldHeight, int newWidth, int newHeight);
     
@@ -104,6 +126,9 @@ public:
     bool isDraggingStartPoint;  // true = start point, false = end point
     
     int currentColorIndex;
+    
+    // NEW: TempoManager reference for tempo-synchronized randomization
+    class TempoManager* tempoManager;
 
 private:
     // Helper methods from working backup

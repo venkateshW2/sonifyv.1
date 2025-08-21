@@ -1,5 +1,6 @@
 #include "CommunicationManager.h"
 #include "LineManager.h"
+#include "ScaleManager.h"
 
 CommunicationManager::CommunicationManager() {
     // OSC initialization
@@ -15,6 +16,7 @@ CommunicationManager::CommunicationManager() {
     totalMidiEvents = 0;  // Initialize MIDI event counter
     
     lineManager = nullptr;
+    scaleManager = nullptr;
 }
 
 CommunicationManager::~CommunicationManager() {
@@ -247,8 +249,32 @@ void CommunicationManager::sendMIDILineCrossing(int lineId, const string& vehicl
         else duration = line.fixedDuration;
     }
     
-    // Send MIDI note
-    sendMIDINote(midiNote, velocity, line.midiChannel);
+    // Check if current scale requires microtonal MIDI (with pitch bend)
+    bool useMicrotonal = false;
+    ScaleManager::MicrotonalNote microNote;
+    
+    if (scaleManager && scaleManager->isMicrotonalityEnabled()) {
+        // Get current scale info from LineManager
+        string currentScale = lineManager->getMasterScale();
+        int rootNote = lineManager->getMasterRootNote();
+        
+        // Get microtonal note data
+        microNote = scaleManager->getMicrotonalNote(currentScale, line.scaleNoteIndex, 
+                                                   rootNote, line.octave);
+        
+        // Use microtonal if pitch bend is needed (non-zero)
+        useMicrotonal = (microNote.pitchBend != 0);
+    }
+    
+    // Send appropriate MIDI note type
+    if (useMicrotonal) {
+        // Send microtonal note with pitch bend
+        sendMicrotonalNote(microNote.midiNote, microNote.pitchBend, velocity, line.midiChannel);
+        midiNote = microNote.midiNote; // Update for logging
+    } else {
+        // Send standard MIDI note
+        sendMIDINote(midiNote, velocity, line.midiChannel);
+    }
     
     // Update duration for this specific note
     if (!activeMidiNotes.empty()) {
@@ -425,5 +451,97 @@ void CommunicationManager::setDefaults() {
     if (!midiPortNames.empty()) {
         setMIDIPortSelected(0, true);
     }
+}
+
+// =============================================================================
+// MICROTONAL MIDI SUPPORT
+// =============================================================================
+
+void CommunicationManager::sendMIDIPitchBend(int pitchBend, int channel) {
+    if (!midiEnabled) return;
+    
+    // Clamp pitch bend to valid MIDI range: -8192 to +8191
+    pitchBend = ofClamp(pitchBend, -8192, 8191);
+    
+    // Convert to 14-bit unsigned value (0-16383)
+    int pitchBendValue = pitchBend + 8192;
+    
+    // Split into MSB and LSB (7-bit each)
+    int lsb = pitchBendValue & 0x7F;          // Lower 7 bits
+    int msb = (pitchBendValue >> 7) & 0x7F;   // Upper 7 bits
+    
+    // Send pitch bend message to all connected ports
+    for (int i = 0; i < midiOuts.size(); i++) {
+        if (midiPortSelected[i] && midiPortConnected[i]) {
+            midiOuts[i].sendPitchBend(channel, lsb, msb);
+        }
+    }
+    
+    midiActivityCounter = 30; // Show activity in UI
+    totalMidiEvents++;
+    
+    ofLogVerbose() << "CommunicationManager: MIDI pitch bend sent - Channel:" << channel 
+                   << " Value:" << pitchBend << " (14-bit:" << pitchBendValue << ")";
+}
+
+void CommunicationManager::sendMIDIControlChange(int controller, int value, int channel) {
+    if (!midiEnabled) return;
+    
+    // Clamp to valid MIDI ranges
+    controller = ofClamp(controller, 0, 127);
+    value = ofClamp(value, 0, 127);
+    
+    // Send CC message to all connected ports
+    for (int i = 0; i < midiOuts.size(); i++) {
+        if (midiPortSelected[i] && midiPortConnected[i]) {
+            midiOuts[i].sendControlChange(channel, controller, value);
+        }
+    }
+    
+    midiActivityCounter = 30;
+    totalMidiEvents++;
+    
+    ofLogVerbose() << "CommunicationManager: MIDI CC sent - Channel:" << channel 
+                   << " CC:" << controller << " Value:" << value;
+}
+
+void CommunicationManager::sendMicrotonalNote(int baseNote, int pitchBend, int velocity, int channel) {
+    if (!midiEnabled) return;
+    
+    // First, send pitch bend for microtonal adjustment
+    if (pitchBend != 0) {
+        sendMIDIPitchBend(pitchBend, channel);
+        
+        // Small delay to ensure pitch bend is processed before note-on
+        // This is handled by the MIDI buffer, no explicit delay needed
+    }
+    
+    // Then send the note-on message
+    sendMIDINote(baseNote, velocity, channel);
+    
+    ofLogNotice() << "CommunicationManager: Microtonal note sent - Note:" << baseNote 
+                  << " PitchBend:" << pitchBend << " Velocity:" << velocity << " Channel:" << channel;
+}
+
+void CommunicationManager::sendMicrotonalNoteOff(int baseNote, int channel) {
+    if (!midiEnabled) return;
+    
+    // Send note-off first
+    sendMIDINoteOff(baseNote, channel);
+    
+    // Then reset pitch bend to center position
+    resetPitchBend(channel);
+    
+    ofLogVerbose() << "CommunicationManager: Microtonal note off - Note:" << baseNote 
+                   << " Channel:" << channel << " (pitch bend reset)";
+}
+
+void CommunicationManager::resetPitchBend(int channel) {
+    if (!midiEnabled) return;
+    
+    // Send pitch bend value 0 (center position = 8192 in 14-bit)
+    sendMIDIPitchBend(0, channel);
+    
+    ofLogVerbose() << "CommunicationManager: Pitch bend reset - Channel:" << channel;
 }
 

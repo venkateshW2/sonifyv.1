@@ -20,7 +20,8 @@ public:
     // Manager connections
     void setManagers(class UIManager* uiMgr, class LineManager* lineMgr, 
                      class VideoManager* videoMgr, class DetectionManager* detMgr,
-                     class CommunicationManager* commMgr);
+                     class CommunicationManager* commMgr, class TempoManager* tempoMgr,
+                     class ScaleManager* scaleMgr);
     
 private:
     string configPath;
@@ -39,4 +40,6 @@ private:
     class VideoManager* videoManager;
     class DetectionManager* detectionManager;
     class CommunicationManager* commManager;
+    class TempoManager* tempoManager;
+    class ScaleManager* scaleManager;
 };

@@ -1,9 +1,11 @@
 #include "ConfigManager.h"
+#include "TempoManager.h"
 #include "UIManager.h"
 #include "LineManager.h"
 #include "VideoManager.h"
 #include "DetectionManager.h"
 #include "CommunicationManager.h"
+#include "ScaleManager.h"
 
 
 ConfigManager::ConfigManager() {
@@ -28,12 +30,15 @@ void ConfigManager::setup() {
 
 void ConfigManager::setManagers(UIManager* uiMgr, LineManager* lineMgr, 
                                 VideoManager* videoMgr, DetectionManager* detMgr,
-                                CommunicationManager* commMgr) {
+                                CommunicationManager* commMgr, TempoManager* tempoMgr,
+                                ScaleManager* scaleMgr) {
     uiManager = uiMgr;
     lineManager = lineMgr;
     videoManager = videoMgr;
     detectionManager = detMgr;
     commManager = commMgr;
+    tempoManager = tempoMgr;
+    scaleManager = scaleMgr;
 }
 
 void ConfigManager::saveConfig() {
@@ -75,6 +80,17 @@ void ConfigManager::saveConfig() {
         json["communication"] = commJson;
     }
     
+    if (tempoManager) {
+        ofxJSONElement tempoJson;
+        tempoManager->saveToJSON(tempoJson);
+        json["tempo"] = tempoJson;
+    }
+    
+    if (scaleManager) {
+        ofxJSONElement scaleJson;
+        scaleManager->saveToJSON(scaleJson);
+        json["scales"] = scaleJson;
+    }
     
     // Add metadata
     json["version"] = "1.0";
@@ -130,6 +146,13 @@ void ConfigManager::loadConfig() {
         commManager->loadFromJSON(json["communication"]);
     }
     
+    if (tempoManager && json.isMember("tempo")) {
+        tempoManager->loadFromJSON(json["tempo"]);
+    }
+    
+    if (scaleManager && json.isMember("scales")) {
+        scaleManager->loadFromJSON(json["scales"]);
+    }
     
     configLoaded = true;
     ofLogNotice() << "ConfigManager: Configuration loaded successfully";
@@ -157,6 +180,13 @@ void ConfigManager::setDefaultConfig() {
         commManager->setDefaults();
     }
     
+    if (tempoManager) {
+        tempoManager->setDefaults();
+    }
+    
+    if (scaleManager) {
+        scaleManager->setDefaults();
+    }
     
     ofLogNotice() << "ConfigManager: Default configuration applied";
 }

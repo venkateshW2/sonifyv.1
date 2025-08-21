@@ -26,13 +26,23 @@ void ofApp::setup(){
     detectionManager.setLineManager(&lineManager);
     detectionManager.setCommunicationManager(&communicationManager);
     
+    // Setup tempo manager
+    tempoManager.setup();
+    
+    // Setup scale manager
+    scaleManager.setup();
+    
+    // Connect TempoManager to LineManager
+    lineManager.setTempoManager(&tempoManager);
+    
     uiManager.setManagers(&videoManager, &lineManager, &detectionManager, 
-                         &communicationManager, &configManager);
+                         &communicationManager, &configManager, &tempoManager, &scaleManager);
     
     communicationManager.setManagers(&lineManager);
+    communicationManager.setScaleManager(&scaleManager);
     
     configManager.setManagers(&uiManager, &lineManager, &videoManager, 
-                             &detectionManager, &communicationManager);
+                             &detectionManager, &communicationManager, &tempoManager, &scaleManager);
     
     // Load configuration - EXACT same as working backup
     configManager.loadConfig();

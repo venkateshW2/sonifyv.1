@@ -21,6 +21,7 @@ public:
     void drawMainControlsTab();
     void drawMIDISettingsTab();
     void drawDetectionClassesTab();
+    void drawScaleManagerTab();
     
     // EXACT same GUI variables as working backup
     ofxImGui::Gui gui;
@@ -32,7 +33,9 @@ public:
                      class LineManager* lineMgr, 
                      class DetectionManager* detMgr,
                      class CommunicationManager* commMgr,
-                     class ConfigManager* confMgr);
+                     class ConfigManager* confMgr,
+                     class TempoManager* tempoMgr,
+                     class ScaleManager* scaleMgr);
     
     // GUI state variables - EXACT COPY from working backup
     float confidenceThreshold;
@@ -55,4 +58,6 @@ private:
     class CommunicationManager* communicationManager;
     class CommunicationManager* commManager;  // Alias used in cpp file
     class ConfigManager* configManager;
+    class TempoManager* tempoManager;
+    class ScaleManager* scaleManager;
 };

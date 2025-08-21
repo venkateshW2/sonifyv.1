@@ -1,4 +1,5 @@
 #include "LineManager.h"
+#include "TempoManager.h"
 
 LineManager::LineManager() {
     // EXACT initialization from working backup
@@ -11,6 +12,9 @@ LineManager::LineManager() {
     isDraggingEndpoint = false;
     draggingLineIndex = -1;
     isDraggingStartPoint = false;
+    
+    // NEW: Initialize TempoManager reference
+    tempoManager = nullptr;
     
     // Master Musical System - EXACT COPY
     initializeMasterMusicalSystem();
@@ -389,7 +393,18 @@ int LineManager::getMidiNoteFromMasterScale(int lineIndex) {
         return 60; // Middle C
     }
     
-    int scaleNoteIndex = line.randomizeNote ? (rand() % scaleIntervals.size()) : line.scaleNoteIndex;
+    int scaleNoteIndex;
+    if (line.randomizeNote) {
+        // Use tempo-synchronized randomization if available and enabled
+        if (tempoManager && line.enableTempoSync) {
+            scaleNoteIndex = getTempoSyncedRandomNote(lineIndex, ofGetElapsedTimef());
+        } else {
+            // Fallback to immediate weighted randomization
+            scaleNoteIndex = getImmediateRandomNote(lineIndex);
+        }
+    } else {
+        scaleNoteIndex = line.scaleNoteIndex;
+    }
     if (scaleNoteIndex >= scaleIntervals.size()) {
         scaleNoteIndex = 0;
     }
@@ -445,6 +460,21 @@ void LineManager::saveToJSON(ofxJSONElement& json) {
         lineJson["velocityType"] = (int)line.velocityType;
         lineJson["fixedVelocity"] = line.fixedVelocity;
         
+        // NEW: Tempo-based randomization properties
+        lineJson["enableTempoSync"] = line.enableTempoSync;
+        lineJson["quantizeMode"] = (int)line.quantizeMode;
+        lineJson["quantizeStrength"] = line.quantizeStrength;
+        lineJson["randomSeed"] = line.randomSeed;
+        lineJson["lastBeatTime"] = line.lastBeatTime;
+        lineJson["lastRandomNoteIndex"] = line.lastRandomNoteIndex;
+        
+        // Save scale degree weights
+        ofxJSONElement weightsJson;
+        for (int w = 0; w < line.scaleDegreeWeights.size(); w++) {
+            weightsJson[w] = line.scaleDegreeWeights[w];
+        }
+        lineJson["scaleDegreeWeights"] = weightsJson;
+        
         json["lines"][i] = lineJson;
     }
     
@@ -489,6 +519,29 @@ void LineManager::loadFromJSON(const ofxJSONElement& json) {
             if (lineJson.isMember("velocityType")) line.velocityType = (MidiLine::VelocityType)lineJson["velocityType"].asInt();
             if (lineJson.isMember("fixedVelocity")) line.fixedVelocity = lineJson["fixedVelocity"].asInt();
             
+            // NEW: Load tempo-based randomization properties
+            if (lineJson.isMember("enableTempoSync")) line.enableTempoSync = lineJson["enableTempoSync"].asBool();
+            if (lineJson.isMember("quantizeMode")) line.quantizeMode = (MidiLine::QuantizeMode)lineJson["quantizeMode"].asInt();
+            if (lineJson.isMember("quantizeStrength")) line.quantizeStrength = lineJson["quantizeStrength"].asFloat();
+            if (lineJson.isMember("randomSeed")) line.randomSeed = lineJson["randomSeed"].asInt();
+            if (lineJson.isMember("lastBeatTime")) line.lastBeatTime = lineJson["lastBeatTime"].asFloat();
+            if (lineJson.isMember("lastRandomNoteIndex")) line.lastRandomNoteIndex = lineJson["lastRandomNoteIndex"].asInt();
+            
+            // Load scale degree weights
+            if (lineJson.isMember("scaleDegreeWeights")) {
+                const ofxJSONElement& weightsJson = lineJson["scaleDegreeWeights"];
+                line.scaleDegreeWeights.clear();
+                for (int w = 0; w < weightsJson.size(); w++) {
+                    if (weightsJson.isMember(ofToString(w))) {
+                        line.scaleDegreeWeights.push_back(weightsJson[ofToString(w)].asFloat());
+                    }
+                }
+                // Ensure we have at least default weights
+                if (line.scaleDegreeWeights.empty()) {
+                    line.scaleDegreeWeights = {1.5f, 0.8f, 1.2f, 0.9f, 1.4f, 0.9f, 0.7f}; // Major scale defaults
+                }
+            }
+            
             lines.push_back(line);
         }
     }
@@ -512,4 +565,103 @@ void LineManager::setDefaults() {
     currentColorIndex = 0;
     
     ofLogNotice() << "LineManager: Set to default values";
+}
+
+// NEW: Tempo-synchronized randomization methods
+int LineManager::getTempoSyncedRandomNote(int lineIndex, float currentTime) {
+    if (lineIndex < 0 || lineIndex >= lines.size()) {
+        return 60; // Middle C fallback
+    }
+    
+    const MidiLine& line = lines[lineIndex];
+    
+    // If tempo sync is disabled, fall back to immediate randomization
+    if (!line.enableTempoSync || !tempoManager) {
+        return getImmediateRandomNote(lineIndex);
+    }
+    
+    // Get quantized beat time from TempoManager
+    float closestBeatTime = tempoManager->getClosestBeatTime(currentTime);
+    int beatIndex = tempoManager->getBeatIndexForTime(closestBeatTime);
+    
+    // Use beat index + line seed for consistent randomization within beat
+    srand(beatIndex * 1000 + line.randomSeed);
+    
+    // Apply scale degree weighting for musical randomness
+    vector<int> scaleIntervals = getScaleIntervals(masterScale);
+    if (scaleIntervals.empty()) {
+        return 60; // Middle C fallback
+    }
+    
+    // Adjust weights to match scale size
+    vector<float> weights = line.scaleDegreeWeights;
+    if (weights.size() != scaleIntervals.size()) {
+        // Resize weights to match scale size
+        weights.resize(scaleIntervals.size(), 1.0f);
+        // If scale is smaller, just use the first N weights
+        // If scale is larger, fill remaining with average weight
+        if (line.scaleDegreeWeights.size() < scaleIntervals.size()) {
+            float avgWeight = 1.0f;
+            if (!line.scaleDegreeWeights.empty()) {
+                avgWeight = 0.0f;
+                for (float w : line.scaleDegreeWeights) avgWeight += w;
+                avgWeight /= line.scaleDegreeWeights.size();
+            }
+            for (int i = line.scaleDegreeWeights.size(); i < scaleIntervals.size(); i++) {
+                weights[i] = avgWeight;
+            }
+        }
+    }
+    
+    // Weighted random selection
+    int selectedIndex = weightedRandomSelection(weights);
+    if (selectedIndex >= scaleIntervals.size()) {
+        selectedIndex = 0; // Fallback to root
+    }
+    
+    // Calculate final MIDI note
+    int baseNote = 12 + masterRootNote + scaleIntervals[selectedIndex]; // Start from octave 1
+    int finalNote = baseNote + (line.octave * 12);
+    
+    return ofClamp(finalNote, 0, 127); // Clamp to valid MIDI range
+}
+
+int LineManager::getImmediateRandomNote(int lineIndex) {
+    if (lineIndex < 0 || lineIndex >= lines.size()) {
+        return 60; // Middle C fallback
+    }
+    
+    const MidiLine& line = lines[lineIndex];
+    vector<int> scaleIntervals = getScaleIntervals(masterScale);
+    
+    if (scaleIntervals.empty()) {
+        return 60; // Middle C fallback
+    }
+    
+    // Simple random selection without tempo sync
+    int scaleNoteIndex = rand() % scaleIntervals.size();
+    
+    int baseNote = 12 + masterRootNote + scaleIntervals[scaleNoteIndex];
+    int finalNote = baseNote + (line.octave * 12);
+    
+    return ofClamp(finalNote, 0, 127);
+}
+
+int LineManager::weightedRandomSelection(const vector<float>& weights) {
+    if (weights.empty()) return 0;
+    
+    float totalWeight = 0.0f;
+    for (float weight : weights) totalWeight += weight;
+    
+    if (totalWeight <= 0.0f) return 0; // Fallback if all weights are 0
+    
+    float randomValue = (rand() / (float)RAND_MAX) * totalWeight;
+    float currentWeight = 0.0f;
+    
+    for (int i = 0; i < weights.size(); i++) {
+        currentWeight += weights[i];
+        if (randomValue <= currentWeight) return i;
+    }
+    
+    return 0; // Fallback to first index
 }
