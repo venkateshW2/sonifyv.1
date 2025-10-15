@@ -230,6 +230,8 @@ void CommunicationManager::sendMIDILineCrossing(int lineId, const string& vehicl
     // Get MIDI note from master scale system
     int midiNote = lineManager->getMidiNoteFromMasterScale(lineId);
     
+    // Note generated from master scale system
+    
     // Calculate velocity
     int velocity = line.fixedVelocity;
     if (line.velocityType == LineManager::MidiLine::CONFIDENCE_BASED) {
@@ -258,9 +260,34 @@ void CommunicationManager::sendMIDILineCrossing(int lineId, const string& vehicl
         string currentScale = lineManager->getMasterScale();
         int rootNote = lineManager->getMasterRootNote();
         
-        // Get microtonal note data
-        microNote = scaleManager->getMicrotonalNote(currentScale, line.scaleNoteIndex, 
+        // FIXED: Get the same note index that would be used by the regular system
+        // This ensures randomization works properly for microtonal notes too
+        int noteIndex;
+        if (line.randomizeNote) {
+            // Extract the scale note index from the generated MIDI note
+            // The getMidiNoteFromMasterScale already handles randomization
+            vector<int> scaleIntervals = lineManager->getScaleIntervals(currentScale);
+            if (!scaleIntervals.empty()) {
+                // Convert the generated MIDI note back to scale index
+                int baseNote = midiNote - 12 - rootNote - (line.octave * 12);
+                noteIndex = 0; // Default to root
+                for (int i = 0; i < scaleIntervals.size(); i++) {
+                    if (scaleIntervals[i] == baseNote) {
+                        noteIndex = i;
+                        break;
+                    }
+                }
+            } else {
+                noteIndex = 0;
+            }
+        } else {
+            noteIndex = line.scaleNoteIndex;
+        }
+        
+        // Get microtonal note data using the properly calculated note index
+        microNote = scaleManager->getMicrotonalNote(currentScale, noteIndex, 
                                                    rootNote, line.octave);
+        // Microtonal note generated
         
         // Use microtonal if pitch bend is needed (non-zero)
         useMicrotonal = (microNote.pitchBend != 0);
@@ -269,10 +296,12 @@ void CommunicationManager::sendMIDILineCrossing(int lineId, const string& vehicl
     // Send appropriate MIDI note type
     if (useMicrotonal) {
         // Send microtonal note with pitch bend
+        // Using microtonal path
         sendMicrotonalNote(microNote.midiNote, microNote.pitchBend, velocity, line.midiChannel);
         midiNote = microNote.midiNote; // Update for logging
     } else {
         // Send standard MIDI note
+        // Using standard path
         sendMIDINote(midiNote, velocity, line.midiChannel);
     }
     

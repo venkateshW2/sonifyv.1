@@ -1,7 +1,7 @@
 # SonifyV1 - Advanced Tempo-Synchronized Microtonal Highway Sonification System
 
 ## Project Overview
-Professional real-time highway sonification system built with openFrameworks. Converts visual highway scenes into sophisticated musical output using CoreML YOLO object detection, tempo-synchronized randomization, microtonal scales, and multi-DAW MIDI integration.
+Professional real-time  sonification system built with openFrameworks. Converts visual scenes into sophisticated musical output using CoreML YOLO object detection, tempo-synchronized randomization, microtonal scales, and multi-DAW MIDI integration.
 
 ## Current System Status: ✅ COMPLETE
 

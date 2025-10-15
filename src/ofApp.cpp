@@ -36,7 +36,7 @@ void ofApp::setup(){
     lineManager.setTempoManager(&tempoManager);
     
     uiManager.setManagers(&videoManager, &lineManager, &detectionManager, 
-                         &communicationManager, &configManager, &tempoManager, &scaleManager);
+                         &communicationManager, &configManager, &scaleManager);
     
     communicationManager.setManagers(&lineManager);
     communicationManager.setScaleManager(&scaleManager);

@@ -96,6 +96,7 @@ public:
     // NEW: Tempo-synchronized randomization methods
     int getTempoSyncedRandomNote(int lineIndex, float currentTime);
     int getImmediateRandomNote(int lineIndex);  // Fallback for non-tempo mode
+    int getImmediateRandomScaleIndex(int lineIndex);  // Returns scale index only
     int weightedRandomSelection(const vector<float>& weights);
     void setTempoManager(class TempoManager* tempoMgr) { tempoManager = tempoMgr; }
     

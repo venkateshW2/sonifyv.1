@@ -5,7 +5,6 @@
 #include "DetectionManager.h"
 #include "CommunicationManager.h"
 #include "ConfigManager.h"
-#include "TempoManager.h"
 #include "ScaleManager.h"
 
 UIManager::UIManager() {
@@ -95,14 +94,13 @@ void UIManager::showResizeWarningDialog() {
     showResizeWarning_ = false;
 }
 
-void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr, TempoManager* tempoMgr, ScaleManager* scaleMgr) {
+void UIManager::setManagers(VideoManager* videoMgr, LineManager* lineMgr, DetectionManager* detMgr, CommunicationManager* commMgr, ConfigManager* confMgr, ScaleManager* scaleMgr) {
     videoManager = videoMgr;
     lineManager = lineMgr;
     detectionManager = detMgr;
     communicationManager = commMgr;
     commManager = commMgr;  // Alias for consistency with code
     configManager = confMgr;
-    tempoManager = tempoMgr;
     scaleManager = scaleMgr;
 }
 
@@ -389,7 +387,7 @@ void UIManager::drawMainControlsTab() {
         ImGui::Separator();
         
         // Config path display
-        string configPath = "bin/data/config.json";
+        string configPath = ofToDataPath("config.json");
         ImGui::Text("Config Path:");
         ImGui::TextWrapped("%s", configPath.c_str());
         
@@ -493,76 +491,6 @@ void UIManager::drawMIDISettingsTab() {
         }
     }
     
-    // Tempo & Rhythm Panel
-    if (ImGui::CollapsingHeader("Tempo & Rhythm", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (tempoManager) {
-            // Global Tempo Enable/Disable
-            bool globalTempoEnabled = tempoManager->getIsRunning();
-            if (ImGui::Checkbox("Global Tempo Enable", &globalTempoEnabled)) {
-                if (globalTempoEnabled) {
-                    tempoManager->start();
-                } else {
-                    tempoManager->stop();
-                }
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Reset Tempo")) {
-                tempoManager->reset();
-            }
-            
-            if (globalTempoEnabled) {
-                // BPM Control
-                float bpm = tempoManager->getBPM();
-                if (ImGui::SliderFloat("BPM", &bpm, 40.0f, 200.0f, "%.1f")) {
-                    tempoManager->setBPM(bpm);
-                }
-                
-                // Subdivision Control
-                float subdivision = tempoManager->getSubdivision();
-                const char* subdivisionNames[] = {"1 (Whole)", "2 (Half)", "4 (Quarter)", "8 (Eighth)", "16 (Sixteenth)"};
-                float subdivisionValues[] = {1.0f, 2.0f, 4.0f, 8.0f, 16.0f};
-                int subdivisionIndex = 0;
-                for (int i = 0; i < 5; i++) {
-                    if (subdivisionValues[i] == subdivision) {
-                        subdivisionIndex = i;
-                        break;
-                    }
-                }
-                if (ImGui::Combo("Subdivision", &subdivisionIndex, subdivisionNames, 5)) {
-                    tempoManager->setSubdivision(subdivisionValues[subdivisionIndex]);
-                }
-                
-                // Swing Control
-                float swing = tempoManager->getSwingRatio();
-                if (ImGui::SliderFloat("Swing Ratio", &swing, 0.5f, 0.8f, "%.2f")) {
-                    tempoManager->setSwingRatio(swing);
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Straight Time")) {
-                    tempoManager->setSwingRatio(0.5f);
-                }
-                
-                // Tempo Status Display
-                ImGui::Separator();
-                float currentTime = ofGetElapsedTimef();
-                float currentBeat = tempoManager->getCurrentBeat(currentTime);
-                float nextBeatTime = tempoManager->getNextBeatTime(currentTime);
-                float secondsPerBeat = tempoManager->getSecondsPerBeat();
-                
-                ImGui::Text("Current Beat: %.2f", currentBeat);
-                ImGui::Text("Seconds per Beat: %.3f", secondsPerBeat);
-                ImGui::Text("Next Beat Time: %.3f", nextBeatTime);
-                ImGui::Text("Is On Beat: %s", tempoManager->isOnBeat(currentTime) ? "YES" : "no");
-                
-                // Beat indicator
-                float beatPhase = fmod(currentBeat, 1.0f);
-                ImGui::Text("Beat Phase: ");
-                ImGui::SameLine();
-                ImGui::ProgressBar(beatPhase, ImVec2(0, 0), "");
-            }
-        }
-    }
-    
     // Lines List Panel
     if (ImGui::CollapsingHeader("Lines & Musical Properties", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (lineManager) {
@@ -637,42 +565,8 @@ void UIManager::drawMIDISettingsTab() {
                         bool isCurrentlyPlaying = false;
                         
                         if (selectedLine->randomizeNote) {
-                            // In random mode, highlight the note that would be played if triggered now
-                            if (selectedLine->enableTempoSync && tempoManager && tempoManager->getIsRunning()) {
-                                // Use tempo-synchronized preview - show the note that changes with each beat
-                                float currentTime = ofGetElapsedTimef();
-                                float currentBeat = tempoManager->getCurrentBeat(currentTime);
-                                int beatIndex = (int)floor(currentBeat);
-                                
-                                // Use the same randomization logic as the actual crossing detection
-                                srand(beatIndex * 1000 + selectedLine->randomSeed);
-                                
-                                // Weighted random selection preview
-                                vector<float> weights = selectedLine->scaleDegreeWeights;
-                                if (weights.size() != scaleNotes.size()) {
-                                    weights.resize(scaleNotes.size(), 1.0f);
-                                }
-                                
-                                float totalWeight = 0.0f;
-                                for (float w : weights) totalWeight += w;
-                                
-                                float randomValue = (float)rand() / RAND_MAX * totalWeight;
-                                float currentWeight = 0.0f;
-                                int previewNoteIndex = 0;
-                                
-                                for (int j = 0; j < weights.size(); j++) {
-                                    currentWeight += weights[j];
-                                    if (randomValue <= currentWeight) {
-                                        previewNoteIndex = j;
-                                        break;
-                                    }
-                                }
-                                
-                                isCurrentlyPlaying = (i == previewNoteIndex);
-                            } else {
-                                // Fallback to time-based cycling at ~500ms intervals for immediate mode
-                                isCurrentlyPlaying = (i == (ofGetElapsedTimeMillis() / 500) % scaleNotes.size());
-                            }
+                            // Show cycling preview for random mode
+                            isCurrentlyPlaying = (i == (ofGetElapsedTimeMillis() / 500) % scaleNotes.size());
                         }
                         
                         // Button styling
@@ -717,29 +611,8 @@ void UIManager::drawMIDISettingsTab() {
                     // Status text
                     ImGui::Separator();
                     if (selectedLine->randomizeNote) {
-                        if (selectedLine->enableTempoSync && tempoManager && tempoManager->getIsRunning()) {
-                            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Tempo-synchronized random (%.1f BPM)", tempoManager->getBPM());
-                            ImGui::TextDisabled("(Yellow highlight shows current beat's note)");
-                            
-                            // Beat indicator for tempo sync
-                            float currentTime = ofGetElapsedTimef();
-                            float currentBeat = tempoManager->getCurrentBeat(currentTime);
-                            float beatPhase = fmod(currentBeat, 1.0f);
-                            bool isOnBeat = tempoManager->isOnBeat(currentTime, 0.1f);
-                            
-                            ImGui::Text("Beat: %.2f ", currentBeat);
-                            ImGui::SameLine();
-                            if (isOnBeat) {
-                                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "●"); // Red dot on beat
-                            } else {
-                                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "○"); // Gray circle off beat
-                            }
-                            ImGui::SameLine();
-                            ImGui::ProgressBar(beatPhase, ImVec2(100, 0), "");
-                        } else {
-                            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Immediate random selection");
-                            ImGui::TextDisabled("(Yellow highlight shows random preview)");
-                        }
+                        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Immediate random selection");
+                        ImGui::TextDisabled("(Yellow highlight shows random preview)");
                     } else {
                         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Mode: Fixed note - %s", scaleNotes[selectedLine->scaleNoteIndex].c_str());
                         ImGui::TextDisabled("(Green button shows selected note)");
@@ -749,86 +622,49 @@ void UIManager::drawMIDISettingsTab() {
                     ImGui::SliderInt("Octave", &selectedLine->octave, 0, 10);
                     ImGui::SliderInt("MIDI Channel", &selectedLine->midiChannel, 1, 16);
                     
-                    // Tempo-based randomization settings
+                    // Randomization settings
                     ImGui::Separator();
-                    ImGui::Text("Tempo & Randomization Settings:");
+                    ImGui::Text("Randomization Settings:");
                     
-                    if (ImGui::Checkbox("Enable Tempo Sync", &selectedLine->enableTempoSync)) {
-                        ofLogNotice() << "Line " << (lineManager->getSelectedLineIndex() + 1) << " tempo sync " 
-                                      << (selectedLine->enableTempoSync ? "enabled" : "disabled");
+                    // Random seed control
+                    if (ImGui::SliderInt("Random Seed", &selectedLine->randomSeed, 0, 999)) {
+                        ofLogNotice() << "Line " << (lineManager->getSelectedLineIndex() + 1) << " random seed: " << selectedLine->randomSeed;
                     }
+                    ImGui::SameLine();
+                    if (ImGui::Button("New Seed")) {
+                        selectedLine->randomSeed = rand() % 1000;
+                    }
+                    
+                    // Scale degree weights editor
+                    ImGui::Text("Scale Degree Weights:");
                     ImGui::SameLine();
                     ImGui::TextDisabled("(?)");
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("When enabled, randomization follows global tempo. When disabled, uses immediate randomization.");
+                        ImGui::SetTooltip("Higher values = more likely to be selected. Adjust for musical emphasis.");
                     }
                     
-                    if (selectedLine->enableTempoSync && tempoManager && tempoManager->getIsRunning()) {
-                        // Quantization mode
-                        const char* quantizeModes[] = {"Hard Snap", "Gradual Transition"};
-                        int quantizeMode = (int)selectedLine->quantizeMode;
-                        if (ImGui::Combo("Quantize Mode", &quantizeMode, quantizeModes, 2)) {
-                            selectedLine->quantizeMode = (LineManager::MidiLine::QuantizeMode)quantizeMode;
+                    // Ensure weights vector matches current scale size
+                    vector<string> scaleNotes = lineManager->getScaleNoteNames();
+                    if (selectedLine->scaleDegreeWeights.size() != scaleNotes.size()) {
+                        selectedLine->scaleDegreeWeights.resize(scaleNotes.size(), 1.0f);
+                    }
+                    
+                    // Weight sliders for each scale degree
+                    for (int i = 0; i < scaleNotes.size() && i < selectedLine->scaleDegreeWeights.size(); i++) {
+                        string label = scaleNotes[i] + " Weight";
+                        if (ImGui::SliderFloat(label.c_str(), &selectedLine->scaleDegreeWeights[i], 0.1f, 2.0f, "%.2f")) {
+                            // Ensure minimum weight
+                            selectedLine->scaleDegreeWeights[i] = std::max(0.1f, selectedLine->scaleDegreeWeights[i]);
                         }
-                        
-                        // Quantization strength (only for gradual transition)
-                        if (selectedLine->quantizeMode == LineManager::MidiLine::GRADUAL_TRANSITION) {
-                            if (ImGui::SliderFloat("Quantize Strength", &selectedLine->quantizeStrength, 0.0f, 1.0f, "%.2f")) {
-                                // Ensure it stays in valid range
-                                selectedLine->quantizeStrength = ofClamp(selectedLine->quantizeStrength, 0.0f, 1.0f);
-                            }
-                            ImGui::SameLine();
-                            ImGui::TextDisabled("(?)");
-                            if (ImGui::IsItemHovered()) {
-                                ImGui::SetTooltip("0.0 = No quantization, 1.0 = Full quantization to beat grid");
-                            }
+                    }
+                    
+                    if (ImGui::Button("Reset Weights to Default")) {
+                        // Set musical defaults (emphasize root and fifth)
+                        for (int i = 0; i < selectedLine->scaleDegreeWeights.size(); i++) {
+                            if (i == 0) selectedLine->scaleDegreeWeights[i] = 1.5f; // Root
+                            else if (i == 4 && i < selectedLine->scaleDegreeWeights.size()) selectedLine->scaleDegreeWeights[i] = 1.4f; // Fifth (in major scale)
+                            else selectedLine->scaleDegreeWeights[i] = 1.0f; // Others
                         }
-                        
-                        // Random seed control
-                        if (ImGui::SliderInt("Random Seed", &selectedLine->randomSeed, 0, 999)) {
-                            ofLogNotice() << "Line " << (lineManager->getSelectedLineIndex() + 1) << " random seed: " << selectedLine->randomSeed;
-                        }
-                        ImGui::SameLine();
-                        if (ImGui::Button("New Seed")) {
-                            selectedLine->randomSeed = rand() % 1000;
-                        }
-                        
-                        // Scale degree weights editor
-                        ImGui::Text("Scale Degree Weights:");
-                        ImGui::SameLine();
-                        ImGui::TextDisabled("(?)");
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Higher values = more likely to be selected. Adjust for musical emphasis.");
-                        }
-                        
-                        // Ensure weights vector matches current scale size
-                        vector<string> scaleNotes = lineManager->getScaleNoteNames();
-                        if (selectedLine->scaleDegreeWeights.size() != scaleNotes.size()) {
-                            selectedLine->scaleDegreeWeights.resize(scaleNotes.size(), 1.0f);
-                        }
-                        
-                        // Weight sliders for each scale degree
-                        for (int i = 0; i < scaleNotes.size() && i < selectedLine->scaleDegreeWeights.size(); i++) {
-                            string label = scaleNotes[i] + " Weight";
-                            if (ImGui::SliderFloat(label.c_str(), &selectedLine->scaleDegreeWeights[i], 0.1f, 2.0f, "%.2f")) {
-                                // Ensure minimum weight
-                                selectedLine->scaleDegreeWeights[i] = std::max(0.1f, selectedLine->scaleDegreeWeights[i]);
-                            }
-                        }
-                        
-                        if (ImGui::Button("Reset Weights to Default")) {
-                            // Set musical defaults (emphasize root and fifth)
-                            for (int i = 0; i < selectedLine->scaleDegreeWeights.size(); i++) {
-                                if (i == 0) selectedLine->scaleDegreeWeights[i] = 1.5f; // Root
-                                else if (i == 4 && i < selectedLine->scaleDegreeWeights.size()) selectedLine->scaleDegreeWeights[i] = 1.4f; // Fifth (in major scale)
-                                else selectedLine->scaleDegreeWeights[i] = 1.0f; // Others
-                            }
-                        }
-                        
-                        ImGui::Text("Tempo Status: %.1f BPM, Next beat in %.2fs", 
-                                   tempoManager->getBPM(), tempoManager->getNextBeatTime(ofGetElapsedTimef()));
-                    } else if (selectedLine->enableTempoSync && (!tempoManager || !tempoManager->getIsRunning())) {
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Global tempo is disabled - using immediate randomization");
                     }
                     
                     // Duration settings
@@ -1499,8 +1335,9 @@ void UIManager::drawScaleManagerTab() {
         auto scalaScales = scaleManager->getScalaScales();
         
         if (scalaScales.empty()) {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No Scala files found in bin/data/scales/");
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Add .scl files to that directory and click Refresh.");
+            string scalaPath = ofToDataPath("scales/");
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No Scala files found in scales directory");
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Add .scl files to: %s", scalaPath.c_str());
         } else {
             for (size_t i = 0; i < scalaScales.size(); i++) {
                 if (i % columns != 0) ImGui::SameLine();
@@ -1603,7 +1440,9 @@ void UIManager::drawScaleManagerTab() {
     if (ImGui::CollapsingHeader("Scale File Management")) {
         ImGui::Indent();
         
-        ImGui::Text("Scala File Directory: bin/data/scales/");
+        string scalaDir = ofToDataPath("scales/");
+        ImGui::Text("Scala File Directory:");
+        ImGui::TextWrapped("%s", scalaDir.c_str());
         ImGui::TextWrapped("Place .scl files in this directory to import custom scales.");
         
         ImGui::Spacing();

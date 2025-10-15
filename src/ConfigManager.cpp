@@ -192,7 +192,7 @@ void ConfigManager::setDefaultConfig() {
 }
 
 string ConfigManager::getConfigPath() const {
-    return ofToDataPath("config.json", true);
+    return ofToDataPath("config.json");
 }
 
 void ConfigManager::saveOnExit() {
@@ -206,7 +206,7 @@ void ConfigManager::resetToDefaults() {
 }
 
 void ConfigManager::ensureConfigDirectory() {
-    string dataPath = ofToDataPath("", true);
+    string dataPath = ofToDataPath("");
     ofDirectory configDir(dataPath);
     if (!configDir.exists()) {
         configDir.create(true);

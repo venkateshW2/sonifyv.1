@@ -34,7 +34,6 @@ public:
                      class DetectionManager* detMgr,
                      class CommunicationManager* commMgr,
                      class ConfigManager* confMgr,
-                     class TempoManager* tempoMgr,
                      class ScaleManager* scaleMgr);
     
     // GUI state variables - EXACT COPY from working backup
@@ -58,6 +57,5 @@ private:
     class CommunicationManager* communicationManager;
     class CommunicationManager* commManager;  // Alias used in cpp file
     class ConfigManager* configManager;
-    class TempoManager* tempoManager;
     class ScaleManager* scaleManager;
 };

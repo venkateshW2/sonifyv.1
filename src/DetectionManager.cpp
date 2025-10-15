@@ -76,7 +76,7 @@ void DetectionManager::loadCoreMLModel() {
     // Initialize CoreML models to nullptr
     
     // Load class names from coco.names - use data path
-    string cocoNamesPath = ofToDataPath("models/coco.names", true);
+    string cocoNamesPath = ofToDataPath("models/coco.names");
     ofLogNotice() << "Looking for coco.names at: " << cocoNamesPath;
     ofBuffer buffer = ofBufferFromFile(cocoNamesPath);
     if (buffer.size() > 0) {
@@ -96,7 +96,7 @@ void DetectionManager::loadCoreMLModel() {
     string modelPath;
     
     // Try yolov8l (large) first for potential higher resolution support
-    modelPath = ofToDataPath("models/yolov8l.mlpackage", true);
+    modelPath = ofToDataPath("models/yolov8l.mlpackage");
     ofLogNotice() << "Looking for YOLOv8L model at: " << modelPath;
     
     if (ofFile::doesFileExist(modelPath, false)) {
@@ -111,7 +111,7 @@ void DetectionManager::loadCoreMLModel() {
     
     // Fallback to yolov8m (medium) if large model not available
     if (!yoloLoaded) {
-        modelPath = ofToDataPath("models/yolov8m.mlpackage", true);
+        modelPath = ofToDataPath("models/yolov8m.mlpackage");
         ofLogNotice() << "Looking for YOLOv8M model at: " << modelPath;
         
         if (ofFile::doesFileExist(modelPath, false)) {
@@ -127,7 +127,7 @@ void DetectionManager::loadCoreMLModel() {
     
     // Final fallback to yolov8n (nano)
     if (!yoloLoaded) {
-        modelPath = ofToDataPath("models/yolov8n.mlpackage", true);
+        modelPath = ofToDataPath("models/yolov8n.mlpackage");
         ofLogNotice() << "Looking for YOLOv8N model at: " << modelPath;
         
         if (ofFile::doesFileExist(modelPath, false)) {
@@ -1130,6 +1130,7 @@ void DetectionManager::checkLineCrossingsSafe() {
                         vehicle.speed, vehicle.speedMph, intersection);
                     
                     // Send MIDI message safely
+                    ofLogNotice() << "DEBUG: About to send MIDI for line crossing - Line:" << lineIndex;
                     communicationManager->sendMIDILineCrossing(lineIndex, vehicle.className, 
                         vehicle.confidence, vehicle.speed);
                     

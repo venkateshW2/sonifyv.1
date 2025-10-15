@@ -64,3 +64,14 @@ sonifyv.1
 !/config.make
 !/Makefile
 !/addons.make
+# Distribution folder (binaries go to GitHub Releases)
+/distribution/
+
+# Personal note-taking (Logseq)
+/journals/
+/logseq/
+/pages/
+/whiteboards/
+
+# Claude settings (local only)
+.claude/settings.local.json

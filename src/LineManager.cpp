@@ -395,13 +395,9 @@ int LineManager::getMidiNoteFromMasterScale(int lineIndex) {
     
     int scaleNoteIndex;
     if (line.randomizeNote) {
-        // Use tempo-synchronized randomization if available and enabled
-        if (tempoManager && line.enableTempoSync) {
-            scaleNoteIndex = getTempoSyncedRandomNote(lineIndex, ofGetElapsedTimef());
-        } else {
-            // Fallback to immediate weighted randomization
-            scaleNoteIndex = getImmediateRandomNote(lineIndex);
-        }
+        // Always use immediate randomization for real-time responsiveness
+        // Tempo sync doesn't make sense for vehicle detection events
+        scaleNoteIndex = getImmediateRandomScaleIndex(lineIndex);
     } else {
         scaleNoteIndex = line.scaleNoteIndex;
     }
@@ -569,6 +565,8 @@ void LineManager::setDefaults() {
 
 // NEW: Tempo-synchronized randomization methods
 int LineManager::getTempoSyncedRandomNote(int lineIndex, float currentTime) {
+    ofLogNotice() << "DEBUG: getTempoSyncedRandomNote called for line " << lineIndex;
+    
     if (lineIndex < 0 || lineIndex >= lines.size()) {
         return 60; // Middle C fallback
     }
@@ -584,8 +582,11 @@ int LineManager::getTempoSyncedRandomNote(int lineIndex, float currentTime) {
     float closestBeatTime = tempoManager->getClosestBeatTime(currentTime);
     int beatIndex = tempoManager->getBeatIndexForTime(closestBeatTime);
     
-    // Use beat index + line seed for consistent randomization within beat
-    srand(beatIndex * 1000 + line.randomSeed);
+    // FIXED: Add microsecond precision and line index for true randomness
+    // Combine multiple changing factors to ensure different results each time
+    float currentTimeMicros = currentTime * 1000000.0f; // Convert to microseconds
+    int randomSeed = (int)(currentTimeMicros) + beatIndex * 1000 + line.randomSeed + (lineIndex * 777);
+    srand(randomSeed);
     
     // Apply scale degree weighting for musical randomness
     vector<int> scaleIntervals = getScaleIntervals(masterScale);
@@ -626,6 +627,50 @@ int LineManager::getTempoSyncedRandomNote(int lineIndex, float currentTime) {
     return ofClamp(finalNote, 0, 127); // Clamp to valid MIDI range
 }
 
+int LineManager::getImmediateRandomScaleIndex(int lineIndex) {
+    if (lineIndex < 0 || lineIndex >= lines.size()) {
+        return 0; // Root note fallback
+    }
+    
+    const MidiLine& line = lines[lineIndex];
+    vector<int> scaleIntervals = getScaleIntervals(masterScale);
+    
+    if (scaleIntervals.empty()) {
+        return 0; // Root note fallback
+    }
+    
+    // Use microsecond precision for true randomness
+    float currentTimeMicros = ofGetElapsedTimef() * 1000000.0f;
+    int randomSeed = (int)(currentTimeMicros) + line.randomSeed + (lineIndex * 777);
+    srand(randomSeed);
+    
+    // Apply weighted random selection for musical intelligence
+    vector<float> weights = line.scaleDegreeWeights;
+    if (weights.size() != scaleIntervals.size()) {
+        // Resize weights to match scale size
+        weights.resize(scaleIntervals.size(), 1.0f);
+        if (line.scaleDegreeWeights.size() < scaleIntervals.size()) {
+            float avgWeight = 1.0f;
+            if (!line.scaleDegreeWeights.empty()) {
+                avgWeight = 0.0f;
+                for (float w : line.scaleDegreeWeights) avgWeight += w;
+                avgWeight /= line.scaleDegreeWeights.size();
+            }
+            for (int i = line.scaleDegreeWeights.size(); i < scaleIntervals.size(); i++) {
+                weights[i] = avgWeight;
+            }
+        }
+    }
+    
+    // Use weighted selection and return the scale index
+    int scaleNoteIndex = weightedRandomSelection(weights);
+    if (scaleNoteIndex >= scaleIntervals.size()) {
+        scaleNoteIndex = 0;
+    }
+    
+    return scaleNoteIndex;
+}
+
 int LineManager::getImmediateRandomNote(int lineIndex) {
     if (lineIndex < 0 || lineIndex >= lines.size()) {
         return 60; // Middle C fallback
@@ -638,8 +683,34 @@ int LineManager::getImmediateRandomNote(int lineIndex) {
         return 60; // Middle C fallback
     }
     
-    // Simple random selection without tempo sync
-    int scaleNoteIndex = rand() % scaleIntervals.size();
+    // Use microsecond precision for true randomness
+    float currentTimeMicros = ofGetElapsedTimef() * 1000000.0f;
+    int randomSeed = (int)(currentTimeMicros) + line.randomSeed + (lineIndex * 777);
+    srand(randomSeed);
+    
+    // Apply weighted random selection for musical intelligence
+    vector<float> weights = line.scaleDegreeWeights;
+    if (weights.size() != scaleIntervals.size()) {
+        // Resize weights to match scale size
+        weights.resize(scaleIntervals.size(), 1.0f);
+        if (line.scaleDegreeWeights.size() < scaleIntervals.size()) {
+            float avgWeight = 1.0f;
+            if (!line.scaleDegreeWeights.empty()) {
+                avgWeight = 0.0f;
+                for (float w : line.scaleDegreeWeights) avgWeight += w;
+                avgWeight /= line.scaleDegreeWeights.size();
+            }
+            for (int i = line.scaleDegreeWeights.size(); i < scaleIntervals.size(); i++) {
+                weights[i] = avgWeight;
+            }
+        }
+    }
+    
+    // Use weighted selection instead of simple random
+    int scaleNoteIndex = weightedRandomSelection(weights);
+    if (scaleNoteIndex >= scaleIntervals.size()) {
+        scaleNoteIndex = 0;
+    }
     
     int baseNote = 12 + masterRootNote + scaleIntervals[scaleNoteIndex];
     int finalNote = baseNote + (line.octave * 12);
@@ -648,19 +719,25 @@ int LineManager::getImmediateRandomNote(int lineIndex) {
 }
 
 int LineManager::weightedRandomSelection(const vector<float>& weights) {
-    if (weights.empty()) return 0;
+    if (weights.empty()) {
+        return 0;
+    }
     
     float totalWeight = 0.0f;
     for (float weight : weights) totalWeight += weight;
     
-    if (totalWeight <= 0.0f) return 0; // Fallback if all weights are 0
+    if (totalWeight <= 0.0f) {
+        return 0; // Fallback if all weights are 0
+    }
     
     float randomValue = (rand() / (float)RAND_MAX) * totalWeight;
     float currentWeight = 0.0f;
     
     for (int i = 0; i < weights.size(); i++) {
         currentWeight += weights[i];
-        if (randomValue <= currentWeight) return i;
+        if (randomValue <= currentWeight) {
+            return i;
+        }
     }
     
     return 0; // Fallback to first index

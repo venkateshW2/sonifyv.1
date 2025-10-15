@@ -8,20 +8,55 @@
       "selectedMidiPorts" : [ "Network Session 1", "IAC Driver Bus 1" ]
    },
    "detection" : {
-      "categoryEnabled" : [ false, false, false, false ],
-      "confidenceThreshold" : 0.3799999952316284,
+      "categoryEnabled" : [ true, false, true, false ],
+      "confidenceThreshold" : 0.2300000041723251,
       "currentPreset" : "Custom",
       "detectionFrameSkip" : 3,
       "displayScale" : 1,
       "enableDetection" : true,
       "enabledClasses" : [
          false,
+         true,
+         true,
+         true,
+         true,
+         true,
          false,
          false,
          false,
          false,
          false,
          false,
+         false,
+         false,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         true,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         false,
+         true,
          false,
          false,
          false,
@@ -59,60 +94,25 @@
          false,
          false,
          false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
-         false,
          false
       ],
       "maxSelectedClasses" : 15,
-      "selectedClassIds" : [ 14 ],
+      "selectedClassIds" : [ 41, 49, 14, 15, 16, 17, 18, 19, 20, 21, 1, 2, 3, 4, 5 ],
       "showDetections" : true
    },
    "lines" : {
       "lines" : [
          {
             "color" : {
-               "b" : 0,
+               "b" : 255,
                "g" : 255,
-               "r" : 128
+               "r" : 0
             },
             "durationType" : 0,
-            "enableTempoSync" : true,
+            "enableTempoSync" : false,
             "endPoint" : {
-               "x" : 639,
-               "y" : 341
+               "x" : 371,
+               "y" : 616
             },
             "fixedDuration" : 500,
             "fixedVelocity" : 100,
@@ -123,40 +123,216 @@
             "octave" : 4,
             "quantizeMode" : 0,
             "quantizeStrength" : 1,
-            "randomSeed" : 0,
-            "randomizeNote" : true,
+            "randomSeed" : 783,
+            "randomizeNote" : false,
             "scaleDegreeWeights" : [
                1.5,
-               1.370000004768372,
+               0.800000011920929,
+               1.200000047683716,
                0.8999999761581421,
-               0.5699999928474426,
-               1.399999976158142
+               1.399999976158142,
+               0.8999999761581421,
+               0.699999988079071
             ],
-            "scaleNoteIndex" : 0,
+            "scaleNoteIndex" : 2,
             "startPoint" : {
-               "x" : 15,
-               "y" : 339
+               "x" : 369,
+               "y" : 3
             },
             "velocityType" : 0
          }
       ],
-      "masterRootNote" : 8,
-      "masterScale" : "Pentatonic",
+      "masterRootNote" : 1,
+      "masterScale" : "31-Tone Equal",
       "showLines" : true
    },
-   "tempo" : {
-      "globalBPM" : 129,
-      "isRunning" : true,
-      "subdivisionBeats" : 1,
-      "swingRatio" : 0.5099999904632568
+   "scales" : {
+      "currentScale" : "Major",
+      "customScales" : {
+         "just_major.scl" : {
+            "description" : "Imported from just_major.scl",
+            "filename" : "just_major.scl",
+            "intervals" : [
+               {
+                  "cents" : 203.9100036621094,
+                  "description" : "Interval 1",
+                  "ratio" : 1.125
+               },
+               {
+                  "cents" : 386.3136901855469,
+                  "description" : "Interval 2",
+                  "ratio" : 1.25
+               },
+               {
+                  "cents" : 498.0450439453125,
+                  "description" : "Interval 3",
+                  "ratio" : 1.333333373069763
+               },
+               {
+                  "cents" : 701.9549560546875,
+                  "description" : "Interval 4",
+                  "ratio" : 1.5
+               },
+               {
+                  "cents" : 884.358642578125,
+                  "description" : "Interval 5",
+                  "ratio" : 1.666666626930237
+               },
+               {
+                  "cents" : 1088.268676757812,
+                  "description" : "Interval 6",
+                  "ratio" : 1.875
+               }
+            ],
+            "isMicrotonal" : true,
+            "name" : "just_major.scl",
+            "source" : "scala"
+         },
+         "pythagorean.scl" : {
+            "description" : "Imported from pythagorean.scl",
+            "filename" : "pythagorean.scl",
+            "intervals" : [
+               {
+                  "cents" : 90.22494506835938,
+                  "description" : "Interval 1",
+                  "ratio" : 1.053497910499573
+               },
+               {
+                  "cents" : 203.9100036621094,
+                  "description" : "Interval 2",
+                  "ratio" : 1.125
+               },
+               {
+                  "cents" : 294.135009765625,
+                  "description" : "Interval 3",
+                  "ratio" : 1.185185194015503
+               },
+               {
+                  "cents" : 407.8200073242188,
+                  "description" : "Interval 4",
+                  "ratio" : 1.265625
+               },
+               {
+                  "cents" : 498.0450439453125,
+                  "description" : "Interval 5",
+                  "ratio" : 1.333333373069763
+               },
+               {
+                  "cents" : 611.72998046875,
+                  "description" : "Interval 6",
+                  "ratio" : 1.423828125
+               },
+               {
+                  "cents" : 701.9549560546875,
+                  "description" : "Interval 7",
+                  "ratio" : 1.5
+               },
+               {
+                  "cents" : 792.1799926757812,
+                  "description" : "Interval 8",
+                  "ratio" : 1.580246925354004
+               },
+               {
+                  "cents" : 905.8650512695312,
+                  "description" : "Interval 9",
+                  "ratio" : 1.6875
+               },
+               {
+                  "cents" : 996.0900268554688,
+                  "description" : "Interval 10",
+                  "ratio" : 1.777777791023254
+               },
+               {
+                  "cents" : 1109.775024414062,
+                  "description" : "Interval 11",
+                  "ratio" : 1.8984375
+               }
+            ],
+            "isMicrotonal" : true,
+            "name" : "pythagorean.scl",
+            "source" : "scala"
+         },
+         "quarter_comma_meantone.scl" : {
+            "description" : "Imported from quarter_comma_meantone.scl",
+            "filename" : "quarter_comma_meantone.scl",
+            "intervals" : [
+               {
+                  "cents" : 76.04900360107422,
+                  "description" : "Interval 1",
+                  "ratio" : 1.044906735420227
+               },
+               {
+                  "cents" : 193.1569976806641,
+                  "description" : "Interval 2",
+                  "ratio" : 1.11803412437439
+               },
+               {
+                  "cents" : 310.2650146484375,
+                  "description" : "Interval 3",
+                  "ratio" : 1.196279287338257
+               },
+               {
+                  "cents" : 386.3139953613281,
+                  "description" : "Interval 4",
+                  "ratio" : 1.250000238418579
+               },
+               {
+                  "cents" : 503.4219970703125,
+                  "description" : "Interval 5",
+                  "ratio" : 1.337480902671814
+               },
+               {
+                  "cents" : 579.4710083007812,
+                  "description" : "Interval 6",
+                  "ratio" : 1.397542834281921
+               },
+               {
+                  "cents" : 696.5780029296875,
+                  "description" : "Interval 7",
+                  "ratio" : 1.495348334312439
+               },
+               {
+                  "cents" : 772.6270141601562,
+                  "description" : "Interval 8",
+                  "ratio" : 1.562499642372131
+               },
+               {
+                  "cents" : 889.7349853515625,
+                  "description" : "Interval 9",
+                  "ratio" : 1.671850442886353
+               },
+               {
+                  "cents" : 1006.843017578125,
+                  "description" : "Interval 10",
+                  "ratio" : 1.788854241371155
+               },
+               {
+                  "cents" : 1082.891967773438,
+                  "description" : "Interval 11",
+                  "ratio" : 1.86918580532074
+               }
+            ],
+            "isMicrotonal" : true,
+            "name" : "quarter_comma_meantone.scl",
+            "source" : "scala"
+         }
+      },
+      "microtonalityEnabled" : false,
+      "scalaDirectory" : "/Users/justmac/Documents/OF/of_v0.12.1_osx_release/apps/myApps/SonifyV1/bin/data/scales/"
    },
-   "timestamp" : "2025-08-20-20-30-38-055",
+   "tempo" : {
+      "globalBPM" : 145.1999969482422,
+      "isRunning" : false,
+      "subdivisionBeats" : 16,
+      "swingRatio" : 0.5
+   },
+   "timestamp" : "2025-10-15-11-49-50-878",
    "ui" : null,
    "version" : "1.0",
    "video" : {
       "currentCameraDeviceID" : 1,
       "currentCameraName" : "Brio 100",
-      "currentVideoPath" : "/Users/justmac/Downloads/videos/newBird Flying 4K Video.mp4",
+      "currentVideoPath" : "/Users/justmac/Downloads/videos/highwaysun.mp4",
       "currentVideoSource" : 1,
       "frameRequestInterval" : 0.5,
       "ipCameraUrl" : "http://localhost:8080/video",

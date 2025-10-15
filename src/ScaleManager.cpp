@@ -8,7 +8,7 @@
 ScaleManager::ScaleManager() {
     currentScaleName = "Major";
     microtonalityEnabled = true;
-    scalaDirectory = ofToDataPath("scales/", true);
+    scalaDirectory = ofToDataPath("scales/");
 }
 
 ScaleManager::~ScaleManager() {
@@ -610,7 +610,7 @@ void ScaleManager::loadFromJSON(const ofxJSONElement& json) {
 void ScaleManager::setDefaults() {
     currentScaleName = "Major";
     microtonalityEnabled = true;
-    scalaDirectory = ofToDataPath("scales/", true);
+    scalaDirectory = ofToDataPath("scales/");
     initializeBuiltinScales();
 }
 
